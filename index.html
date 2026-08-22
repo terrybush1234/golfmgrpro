@@ -438,29 +438,62 @@ footer {
   nav .nav-links { display: none; }
 }
 @media (max-width: 600px) {
+  /* Layout */
   .features-grid { grid-template-columns: 1fr; }
   .how-grid { grid-template-columns: 1fr; }
   .how-step { border-right: none; border-bottom: 1px solid var(--border); }
+  .modes-grid { grid-template-columns: 1fr; }
   footer { flex-direction: column; gap: 0.75rem; text-align: center; }
-  body { font-size: 20px; line-height: 1.7; }
-  .hero-eyebrow { font-size: 1.1rem; }
-  .hero-sub { font-size: 1.25rem; line-height: 1.6; }
-  .section-tag { font-size: 0.95rem; letter-spacing: 0.1em; }
-  .section-title { font-size: clamp(2rem, 7vw, 2.6rem); }
-  .feat-title { font-size: 1.3rem; }
-  .feat-desc { font-size: 1.05rem; line-height: 1.7; }
-  .demo-card-title { font-size: 1.3rem; }
-  .demo-card-sub { font-size: 1rem; }
-  .mode-name { font-size: 1.9rem; }
-  .mode-desc { font-size: 1.05rem; line-height: 1.7; }
-  .price-desc { font-size: 1.15rem; }
-  .nav-logo .logo-text { font-size: 1.2rem; }
-  .feat-icon { font-size: 1.6rem; }
-  .how-num { font-size: 1.6rem; }
+  section { padding: 3rem 1.25rem; }
+  .hero { padding: 3rem 1.25rem 2rem; }
+  nav { padding: 0 1.25rem; }
+
+  /* Base type — everything rem/em scales from here */
+  html { font-size: 18px; }
+  body { font-size: 1rem; line-height: 1.75; }
+
+  /* Nav */
+  .nav-logo .logo-text { font-size: 1.15rem; }
+
+  /* Hero */
+  .hero-eyebrow { font-size: 1rem; }
+  .hero-title { font-size: 2.6rem; line-height: 1.1; }
+  .hero-sub { font-size: 1.15rem; line-height: 1.7; }
+  .hero-price { font-size: 1rem; }
+
+  /* Sections */
+  .section-tag { font-size: 0.85rem; }
+  .section-title { font-size: 2rem; line-height: 1.2; }
+
+  /* Feature cards */
+  .feat-icon { font-size: 1.8rem; }
+  .feat-title { font-size: 1.15rem; }
+  .feat-desc { font-size: 1rem; line-height: 1.75; }
+
+  /* Demo cards */
+  .demo-card { padding: 1.25rem 1.5rem; }
+  .demo-card-title { font-size: 1.2rem; }
+  .demo-card-sub { font-size: 0.95rem; }
+  .demo-arrow { font-size: 1.5rem; }
+
+  /* Game modes */
+  .mode-tag { font-size: 0.8rem; }
+  .mode-name { font-size: 1.8rem; }
+  .mode-desc { font-size: 1rem; line-height: 1.75; }
+
+  /* Ryder Cup */
   .rc-feature-title { font-size: 1.1rem; }
-  .rc-feature-desc { font-size: 1rem; }
-  .hc-score { font-size: 1.3rem; }
-  .price-amount { font-size: 3.5rem; }
+  .rc-feature-desc { font-size: 0.95rem; line-height: 1.7; }
+
+  /* Pricing */
+  .price-amount { font-size: 4rem; }
+  .price-period { font-size: 1.2rem; }
+  .price-desc { font-size: 1.05rem; }
+
+  /* How it works */
+  .how-num { font-size: 1.8rem; }
+  .how-title { font-size: 1.15rem; }
+  .how-desc { font-size: 1rem; }
 }
 
 /* ── REVEAL ── */
