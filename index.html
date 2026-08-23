@@ -457,13 +457,14 @@ footer {
 
   /* Hero */
   .hero-eyebrow { font-size: 1rem; }
-  .hero-title { font-size: 2.6rem; line-height: 1.1; }
+  .hero-headline { font-size: 2.6rem; line-height: 1.1; }
   .hero-sub { font-size: 1.15rem; line-height: 1.7; }
   .hero-price { font-size: 1rem; }
 
   /* Sections */
-  .section-tag { font-size: 0.85rem; }
-  .section-title { font-size: 2rem; line-height: 1.2; }
+  .section-eyebrow { font-size: 0.85rem; }
+  .section-heading { font-size: 2rem; line-height: 1.2; }
+  .section-sub { font-size: 1rem; line-height: 1.75; }
 
   /* Feature cards */
   .feat-icon { font-size: 1.8rem; }
@@ -486,7 +487,7 @@ footer {
   .rc-feature-desc { font-size: 0.95rem; line-height: 1.7; }
 
   /* Pricing */
-  .price-amount { font-size: 4rem; }
+  .price-num { font-size: 4rem; }
   .price-period { font-size: 1.2rem; }
   .price-desc { font-size: 1.05rem; }
 
@@ -569,7 +570,7 @@ footer {
       </div>
       <div class="hc-tee">
         <div class="tee-chip"><span class="time">8:00</span><span class="names">Group 1 · 3 players</span></div>
-        <div class="tee-chip"><span class="time">8:10</span><span class="names">Group 2 · 4 players</span></div>
+        <div class="tee-chip"><span class="time">8:10</span><span class="names">Group 2 · 3 players</span></div>
         <div class="tee-chip"><span class="time">8:20</span><span class="names">Group 3 · 4 players</span></div>
       </div>
     </div>
@@ -579,7 +580,6 @@ footer {
 <!-- PRICE BAND -->
 <div class="price-band">
   <div class="price-band-inner">
-    <div class="price-num">$9.99 <span class="price-period">one-time purchase</span></div>
     <p class="price-desc">No subscriptions. No per-league fees. Buy once and run as many leagues as you want, on as many courses as you have.</p>
     <div class="price-includes">
       <span>Unlimited leagues</span>
@@ -660,7 +660,7 @@ footer {
 <section class="demo-section" id="demo">
   <div class="section-inner" style="text-align:center;">
     <p class="section-eyebrow">See It In Action</p>
-    <h2 class="section-title">Admin Walkthrough</h2>
+    <h2 class="section-heading">Admin Walkthrough</h2>
     <p class="section-sub">Watch how commissioners set up and manage a full league day — from tee times to Ryder Cup — in minutes.</p>
     <a class="demo-card reveal" href="javascript:void(0)" onclick="openTour()">
       <div class="demo-play">&#9654;</div>
@@ -716,7 +716,7 @@ footer {
         <div class="mode-stripe stripe-green"></div>
         <div class="mode-tag">Team · Pairs</div>
         <div class="mode-name">1 Best Ball</div>
-        <div class="mode-desc">Two-man teams drawn randomly at results time. The tee sheet draw balances handicaps across groups using a snake distribution. When the tee sheet draw and results draw are set to the same time, partners are placed in the same tee time group. Each hole, the best net score of the two partners counts. Lowest combined score wins.</div>
+        <div class="mode-desc">Two-man teams drawn randomly at results time — pure blind draw, no handicap weighting. When the results draw and tee sheet draw are set to the same time, partners are placed in the same tee time slot so they play together. Each hole, the best net score of the two partners counts. Lowest combined score wins.</div>
         <div class="mode-pills">
           <span class="pill">Partners drawn randomly</span>
           <span class="pill">Net scores vs. par</span>
@@ -727,7 +727,7 @@ footer {
         <div class="mode-stripe stripe-water"></div>
         <div class="mode-tag">Team · Groups</div>
         <div class="mode-name">2 Best Ball</div>
-        <div class="mode-desc">The tee sheet groups are the teams. Works with twosomes, threesomes, and foursomes. Each hole, the two best net scores from the group count. Balanced with a snake handicap draw across all groups.</div>
+        <div class="mode-desc">The tee sheet groups are the teams, drawn using a snake handicap distribution to balance competition across all groups. Since teams are always in the same tee time slot, everyone on your team plays together. Each hole, the two best net scores from the group count.</div>
         <div class="mode-pills">
           <span class="pill">Any group size</span>
           <span class="pill">Optional all-birdie rule</span>
@@ -966,8 +966,8 @@ footer {
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">Golf League <span>Manager: Pro</span></div>
-  <div>Golf League Manager: Pro · $9.99 one-time purchase</div>
+  <div class="footer-logo">Golf League <span>Manager Pro</span></div>
+  <div>© 2026 Golf League Manager Pro</div>
 </footer>
 
 <script>
