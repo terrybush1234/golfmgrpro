@@ -966,7 +966,7 @@ footer {
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">Golf League <span>Manager Pro</span></div>
+  <div class="footer-logo">Golf League <span>Manager: Pro</span></div>
   <div>© 2026 Golf League Manager Pro</div>
 </footer>
 
@@ -1175,7 +1175,7 @@ const slides = [
   }
 ];
 
-var tC=0, tPlaying=true, tTts=false, tRafId=null, tInited=false;
+var tC=0, tPlaying=true, tTts=true, tRafId=null, tInited=false;
 var T_DUR=5000;
 
 function tInit(){
@@ -1375,7 +1375,7 @@ const resImgs=["data:image/jpeg;base64,/9j/4QFKRXhpZgAATU0AKgAAAAgABQEAAAMAAAABB
 
 <script>
 // ── ROSTER MODAL ──
-var rC=0,rPl=true,rTts=false,rRi=null,rInited=false,R_DUR=5000;
+var rC=0,rPl=true,rTts=true,rRi=null,rInited=false,R_DUR=5000;
 function rInit(){
   if(rInited)return;rInited=true;
   var fr=document.getElementById('r-frame');
@@ -1401,7 +1401,7 @@ function openRoster(){window._tourActive=true;rInit();rC=0;rUI();document.getEle
 function closeRoster(){rStop();document.getElementById('roster-modal').style.display='none';document.body.style.overflow='';}
 
 // ── TEE SHEET MODAL ──
-var tsC=0,tsPl=true,tsTts=false,tsRi=null,tsInited=false,TS_DUR=5000;
+var tsC=0,tsPl=true,tsTts=true,tsRi=null,tsInited=false,TS_DUR=5000;
 function tsInit(){
   if(tsInited)return;tsInited=true;
   var fr=document.getElementById('ts-frame');
@@ -1484,7 +1484,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeRoster
 
 <script>
 // ── RYDER CUP MODAL ──
-var rcC=0,rcPl=true,rcTts=false,rcRi=null,rcInited=false,RC_DUR=5000;
+var rcC=0,rcPl=true,rcTts=true,rcRi=null,rcInited=false,RC_DUR=5000;
 function rcInit(){
   if(rcInited)return;rcInited=true;
   var fr=document.getElementById('rc-frame');
@@ -1510,7 +1510,7 @@ function openRC(){window._tourActive=true;rcInit();rcC=0;rcUI();document.getElem
 function closeRC(){rcStop();document.getElementById('rc-modal').style.display='none';document.body.style.overflow='';}
 
 // ── RESULTS MODAL ──
-var resC=0,resPl=true,resTts=false,resRi=null,resInited=false,RES_DUR=5000;
+var resC=0,resPl=true,resTts=true,resRi=null,resInited=false,RES_DUR=5000;
 function resInit(){
   if(resInited)return;resInited=true;
   var fr=document.getElementById('res-frame');
