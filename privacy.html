@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Golf League Manager: Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --green-dark: #1b3a28;
+  --green-mid: #2e5e42;
+  --green-lt: #4a7a5a;
+  --gold: #c9a84c;
+  --gold-lt: #e8d08a;
+  --ink: #1e1e1e;
+  --muted: #6b7c6e;
+  --surface: #f9f8f5;
+  --surface2: #eef2ee;
+  --border: #d4ddd6;
+  --white: #ffffff;
+  --sidebar-w: 220px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e8ede9;
+    --muted: #8fa893;
+    --surface: #141f18;
+    --surface2: #1e2f23;
+    --border: #2a3d2f;
+    --white: #1a2b1f;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e8ede9;
+  --muted: #8fa893;
+  --surface: #141f18;
+  --surface2: #1e2f23;
+  --border: #2a3d2f;
+  --white: #1a2b1f;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--font-body);background:var(--surface);color:var(--ink);font-size:15px;line-height:1.7;}
+
+header{background:var(--green-dark);color:#fff;padding:2rem 2rem 1.5rem;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.3);}
+.header-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.header-logo{font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:#fff;white-space:nowrap;}
+.header-logo span{color:var(--gold);}
+.header-badge{background:var(--gold);color:var(--green-dark);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;letter-spacing:0.05em;white-space:nowrap;}
+.header-title{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-left:auto;}
+
+.layout{display:flex;max-width:1000px;margin:0 auto;padding:2rem 1.5rem;gap:2.5rem;align-items:flex-start;}
+
+nav.sidebar{width:var(--sidebar-w);flex-shrink:0;position:sticky;top:80px;max-height:calc(100vh - 100px);overflow-y:auto;}
+.sidebar-head{font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;}
+.sidebar ul{list-style:none;}
+.sidebar li{margin-bottom:0.1rem;}
+.sidebar a{display:block;padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;color:var(--muted);text-decoration:none;transition:background 0.15s,color 0.15s;}
+.sidebar a:hover,.sidebar a.active{background:var(--surface2);color:var(--green-mid);}
+.sidebar a.active{font-weight:600;border-left:2px solid var(--gold);padding-left:0.5rem;}
+
+main{flex:1;min-width:0;}
+
+.page-title{font-family:var(--font-display);font-size:2rem;color:var(--green-dark);margin-bottom:0.35rem;}
+.page-meta{font-size:0.8rem;color:var(--muted);margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:2px solid var(--border);}
+
+.doc-section{margin-bottom:2.25rem;scroll-margin-top:80px;}
+.section-number{font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.25rem;}
+.doc-section h2{font-family:var(--font-display);font-size:1.3rem;color:var(--green-dark);margin-bottom:0.85rem;padding-bottom:0.45rem;border-bottom:1px solid var(--border);}
+.doc-section h3{font-size:0.9rem;font-weight:700;color:var(--ink);margin:1rem 0 0.4rem;}
+.doc-section p{margin-bottom:0.7rem;color:var(--ink);}
+.doc-section ul{padding-left:1.4rem;margin-bottom:0.7rem;}
+.doc-section li{margin-bottom:0.3rem;color:var(--ink);}
+.doc-section a{color:var(--green-mid);text-decoration:none;}
+.doc-section a:hover{text-decoration:underline;}
+
+.info-box{background:var(--surface2);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:0.85rem 1rem;margin:0.75rem 0;font-size:0.875rem;}
+.info-box-label{font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.2rem;}
+
+.contact-card{background:var(--green-dark);color:#fff;border-radius:12px;padding:1.25rem 1.5rem;margin-top:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.contact-card p{font-size:0.875rem;color:rgba(255,255,255,0.75);margin:0;}
+.contact-card a{color:var(--gold-lt);text-decoration:none;font-weight:600;}
+.contact-card a:hover{text-decoration:underline;}
+
+footer{background:var(--green-dark);color:rgba(255,255,255,0.5);text-align:center;padding:2rem;font-size:0.8rem;margin-top:3rem;}
+footer strong{color:#fff;}
+footer a{color:var(--gold-lt);text-decoration:none;}
+
+@media(max-width:720px){
+  .layout{flex-direction:column;gap:0;padding:1rem;}
+  nav.sidebar{display:none;}
+  .page-title{font-size:1.5rem;}
+  .doc-section h2{font-size:1.1rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-logo">Golf League <span>Manager: Pro</span></div>
+    <div class="header-badge">Privacy Policy</div>
+    <div class="header-title">The Commissioner's Golf App</div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <nav class="sidebar" aria-label="Table of contents">
+    <div class="sidebar-head">Contents</div>
+    <ul>
+      <li><a href="#s1">1. Information We Collect</a></li>
+      <li><a href="#s2">2. How We Use Your Information</a></li>
+      <li><a href="#s3">3. Data Sharing &amp; Third Parties</a></li>
+      <li><a href="#s4">4. Data Retention &amp; Deletion</a></li>
+      <li><a href="#s5">5. Security</a></li>
+      <li><a href="#s6">6. Children's Privacy</a></li>
+      <li><a href="#s7">7. Policy Changes</a></li>
+      <li><a href="#s8">8. Contact Us</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1 class="page-title">Privacy Policy</h1>
+    <div class="page-meta">Last Updated: January 1, 2026 &nbsp;·&nbsp; The Commissioner's Golf App</div>
+
+    <p style="margin-bottom:1.5rem;color:var(--muted);">Thank you for using The Commissioner's Golf App. This Privacy Policy explains how we collect, use, and handle your information. By using our application, you agree to the collection and use of information in accordance with this policy.</p>
+
+    <!-- S1 -->
+    <section class="doc-section" id="s1">
+      <div class="section-number">Section 1</div>
+      <h2>Information We Collect</h2>
+      <p>We collect several types of information for various purposes to provide and improve our service to you.</p>
+
+      <h3>a) Personally Identifiable Information (PII)</h3>
+      <ul>
+        <li><strong>Administrator Account</strong> — When a league administrator creates an account, we collect your email address and password via Firebase Authentication to secure your account and verify your identity.</li>
+        <li><strong>Member Information</strong> — League administrators enter information about league members including their name, handicap, and optionally their email address. This information is stored in the league's database and is used for core app functions like creating tee sheets and sending league communications.</li>
+      </ul>
+
+      <h3>b) Usage Data</h3>
+      <p>We use Google Analytics for Firebase to collect anonymous information about how the App is accessed and used. This may include your device type, operating system, and in-app interactions (such as which tabs are viewed). This data is aggregated and helps us understand user behavior to improve the App.</p>
+
+      <h3>c) App and Game Data</h3>
+      <p>We store all data required for the app's functionality, including league settings (rules, schedules, timezones), game schedules, tee time assignments, player signups, and game scores. This data is stored securely in your league's document within Google Firestore.</p>
+    </section>
+
+    <!-- S2 -->
+    <section class="doc-section" id="s2">
+      <div class="section-number">Section 2</div>
+      <h2>How We Use Your Information</h2>
+      <ul>
+        <li>To provide and maintain the core functionality of the App</li>
+        <li>To provide administrator functions, such as creating leagues and managing user access</li>
+        <li>To send automated emails for league-related events, such as tee time requests to the pro shop and group messages to league members, based on the schedules you configure</li>
+        <li>To gather analysis and valuable information so that we can improve our App</li>
+        <li>To monitor the usage of our App and prevent technical issues</li>
+      </ul>
+    </section>
+
+    <!-- S3 -->
+    <section class="doc-section" id="s3">
+      <div class="section-number">Section 3</div>
+      <h2>Data Sharing &amp; Third Parties</h2>
+      <p>We do not sell your personal information. We only share data with trusted third-party services that are essential for the operation of the App.</p>
+      <ul>
+        <li><strong>Google Firebase</strong> — We use multiple Firebase services (Authentication, Firestore, Cloud Functions, Analytics) as the backbone of our application. All of your app data is stored on Google's secure infrastructure. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">View Google's Privacy Policy</a></li>
+        <li><strong>Nodemailer (via Gmail)</strong> — Our server uses Nodemailer through a standard Gmail account to send automated emails for league communications. These emails are processed by Google's mail servers.</li>
+      </ul>
+    </section>
+
+    <!-- S4 -->
+    <section class="doc-section" id="s4">
+      <div class="section-number">Section 4</div>
+      <h2>Data Retention &amp; Deletion</h2>
+      <ul>
+        <li><strong>Core Data</strong> — Your account information, league settings, and member roster are retained as long as your league is active in the App.</li>
+        <li><strong>Transient Game Data</strong> — Game-related data (player signups, tee times, scores, and past event flags) is automatically and permanently deleted on a weekly basis every Sunday morning. Data older than 7 days is purged.</li>
+        <li><strong>Account Deletion</strong> — If you wish to delete your account and all associated league data, please contact us at the email address provided below.</li>
+      </ul>
+    </section>
+
+    <!-- S5 -->
+    <section class="doc-section" id="s5">
+      <div class="section-number">Section 5</div>
+      <h2>Security</h2>
+      <p>The security of your data is important to us. We use industry-standard services (Google Firebase) to protect your data. However, please remember that no method of transmission over the Internet or method of electronic storage is 100% secure.</p>
+    </section>
+
+    <!-- S6 -->
+    <section class="doc-section" id="s6">
+      <div class="section-number">Section 6</div>
+      <h2>Children's Privacy</h2>
+      <p>Our Service does not address anyone under the age of 13. We do not knowingly collect personally identifiable information from anyone under the age of 13. If you are a parent or guardian and you are aware that your child has provided us with personal data, please contact us.</p>
+    </section>
+
+    <!-- S7 -->
+    <section class="doc-section" id="s7">
+      <div class="section-number">Section 7</div>
+      <h2>Changes to This Privacy Policy</h2>
+      <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes.</p>
+    </section>
+
+    <!-- S8 -->
+    <section class="doc-section" id="s8">
+      <div class="section-number">Section 8</div>
+      <h2>Contact Us</h2>
+      <p>If you have any questions about this Privacy Policy, please contact us:</p>
+      <div class="contact-card">
+        <span style="font-size:1.75rem;">✉️</span>
+        <p>Terry Bush &nbsp;·&nbsp; <a href="mailto:terrybush1234@gmail.com">terrybush1234@gmail.com</a></p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <strong>Golf League Manager: Pro</strong> — Available on iOS and Android<br>
+  One-time purchase $9.99 · Unlimited leagues<br>
+  <a href="https://golfmgrpro.com/support.html">User Support</a> &nbsp;·&nbsp; <a href="mailto:terrybush1234@gmail.com">terrybush1234@gmail.com</a>
+</footer>
+
+<script>
+const sections = document.querySelectorAll('.doc-section');
+const links = document.querySelectorAll('.sidebar a');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
