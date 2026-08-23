@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Support — Golf League Manager: Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --green-dark: #1b3a28;
+  --green-mid: #2e5e42;
+  --green-lt: #4a7a5a;
+  --gold: #c9a84c;
+  --gold-lt: #e8d08a;
+  --ink: #1e1e1e;
+  --muted: #6b7c6e;
+  --surface: #f9f8f5;
+  --surface2: #eef2ee;
+  --border: #d4ddd6;
+  --white: #ffffff;
+  --sidebar-w: 260px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e8ede9;
+    --muted: #8fa893;
+    --surface: #141f18;
+    --surface2: #1e2f23;
+    --border: #2a3d2f;
+    --white: #1a2b1f;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e8ede9;
+  --muted: #8fa893;
+  --surface: #141f18;
+  --surface2: #1e2f23;
+  --border: #2a3d2f;
+  --white: #1a2b1f;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--font-body);background:var(--surface);color:var(--ink);font-size:15px;line-height:1.7;}
+
+/* ── HEADER ── */
+header{background:var(--green-dark);color:#fff;padding:2rem 2rem 1.5rem;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.3);}
+.header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.header-logo{font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:#fff;white-space:nowrap;}
+.header-logo span{color:var(--gold);}
+.header-badge{background:var(--gold);color:var(--green-dark);font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:20px;letter-spacing:0.05em;white-space:nowrap;}
+.header-title{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-left:auto;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;max-width:1100px;margin:0 auto;padding:2rem 1.5rem;gap:2.5rem;align-items:flex-start;}
+
+/* ── SIDEBAR ── */
+nav.sidebar{width:var(--sidebar-w);flex-shrink:0;position:sticky;top:80px;max-height:calc(100vh - 100px);overflow-y:auto;}
+.sidebar-head{font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;}
+.sidebar ul{list-style:none;}
+.sidebar li{margin-bottom:0.1rem;}
+.sidebar a{display:block;padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;color:var(--muted);text-decoration:none;transition:background 0.15s,color 0.15s;}
+.sidebar a:hover,.sidebar a.active{background:var(--surface2);color:var(--green-mid);}
+.sidebar a.active{font-weight:600;border-left:2px solid var(--gold);padding-left:0.5rem;}
+
+/* ── MAIN ── */
+main{flex:1;min-width:0;}
+
+/* ── CONTACT CARD ── */
+.contact-card{background:var(--green-dark);color:#fff;border-radius:12px;padding:1.5rem 1.75rem;margin-bottom:2rem;display:flex;align-items:flex-start;gap:1.25rem;}
+.contact-icon{font-size:2rem;flex-shrink:0;}
+.contact-card h2{font-family:var(--font-display);font-size:1.15rem;color:#fff;margin-bottom:0.35rem;}
+.contact-card p{font-size:0.875rem;color:rgba(255,255,255,0.7);line-height:1.6;}
+.contact-card a{color:var(--gold-lt);text-decoration:none;}
+.contact-card a:hover{text-decoration:underline;}
+.contact-meta{display:flex;gap:1.5rem;margin-top:0.75rem;flex-wrap:wrap;}
+.contact-meta-item{font-size:0.8rem;color:rgba(255,255,255,0.6);}
+.contact-meta-item strong{color:#fff;display:block;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.1rem;}
+
+/* ── SECTIONS ── */
+.doc-section{margin-bottom:2.5rem;scroll-margin-top:80px;}
+.section-number{font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.3rem;}
+.doc-section h2{font-family:var(--font-display);font-size:1.5rem;color:var(--green-dark);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border);}
+:root[data-theme="dark"] .doc-section h2,
+@media (prefers-color-scheme:dark){.doc-section h2{color:var(--gold-lt);}}
+.doc-section h3{font-size:0.95rem;font-weight:700;color:var(--ink);margin:1.25rem 0 0.5rem;}
+.doc-section p{margin-bottom:0.75rem;color:var(--ink);}
+.doc-section ul,.doc-section ol{padding-left:1.4rem;margin-bottom:0.75rem;}
+.doc-section li{margin-bottom:0.3rem;color:var(--ink);}
+.doc-section strong{color:var(--ink);}
+
+/* ── STEPS (numbered lists) ── */
+.steps{list-style:none;padding:0;counter-reset:step;}
+.steps li{counter-increment:step;display:flex;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);}
+.steps li:last-child{border-bottom:none;}
+.steps li::before{content:counter(step);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;min-width:24px;background:var(--green-dark);color:#fff;border-radius:50%;font-size:0.72rem;font-weight:700;margin-top:0.1rem;}
+
+/* ── INFO BOXES ── */
+.info-box{background:var(--surface2);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:0.85rem 1rem;margin:0.75rem 0;font-size:0.88rem;}
+.info-box.tip{border-color:var(--green-lt);}
+.info-box.warn{border-color:#c0392b;}
+.info-box-label{font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.25rem;}
+
+/* ── TOOL CARDS (commissioner tools) ── */
+.tool-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:0.75rem;}
+.tool-name{font-weight:700;font-size:0.95rem;color:var(--ink);margin-bottom:0.3rem;}
+.tool-desc{font-size:0.875rem;color:var(--muted);}
+
+/* ── TROUBLESHOOT ITEMS ── */
+.trouble-item{border:1px solid var(--border);border-radius:10px;margin-bottom:0.75rem;overflow:hidden;}
+.trouble-q{font-weight:600;font-size:0.9rem;padding:0.9rem 1rem;background:var(--surface2);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;}
+.trouble-q::after{content:'﹢';font-size:1.1rem;color:var(--muted);flex-shrink:0;}
+.trouble-item.open .trouble-q::after{content:'﹣';}
+.trouble-a{display:none;padding:0.85rem 1rem;font-size:0.875rem;color:var(--muted);border-top:1px solid var(--border);}
+.trouble-item.open .trouble-a{display:block;}
+
+/* ── FOOTER ── */
+footer{background:var(--green-dark);color:rgba(255,255,255,0.5);text-align:center;padding:2rem;font-size:0.8rem;margin-top:3rem;}
+footer strong{color:#fff;}
+footer a{color:var(--gold-lt);text-decoration:none;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px){
+  .layout{flex-direction:column;gap:0;padding:1rem;}
+  nav.sidebar{display:none;}
+  .contact-meta{flex-direction:column;gap:0.5rem;}
+  .doc-section h2{font-size:1.25rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-logo">Golf League <span>Manager: Pro</span></div>
+    <div class="header-badge">User Support</div>
+    <div class="header-title">The Commissioner's Golf App</div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" aria-label="Table of contents">
+    <div class="sidebar-head">Contents</div>
+    <ul>
+      <li><a href="#contact">Contact Support</a></li>
+      <li><a href="#s1">1. Getting Started</a></li>
+      <li><a href="#s2">2. Joining or Creating a League</a></li>
+      <li><a href="#s3">3. Admin Setup</a></li>
+      <li><a href="#s4">4. Day Manager</a></li>
+      <li><a href="#s5">5. Course Setup</a></li>
+      <li><a href="#s6">6. Roster &amp; Sign-Up</a></li>
+      <li><a href="#s7">7. Tee Sheet &amp; Blind Draw</a></li>
+      <li><a href="#s8">8. Scorecard &amp; Live Scoring</a></li>
+      <li><a href="#s9">9. Results &amp; Leaderboard</a></li>
+      <li><a href="#s10">10. Pro Shop Communications</a></li>
+      <li><a href="#s11">11. Weekly Reset</a></li>
+      <li><a href="#s12">12. Commissioner Tools</a></li>
+      <li><a href="#s13">13. Troubleshooting</a></li>
+    </ul>
+  </nav>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- CONTACT -->
+    <div class="contact-card" id="contact">
+      <div class="contact-icon">⛳</div>
+      <div>
+        <h2>Contact Support</h2>
+        <p>For technical issues, account recovery, or feedback, contact the developer directly.</p>
+        <div class="contact-meta">
+          <div class="contact-meta-item"><strong>Contact</strong>Terry Bush</div>
+          <div class="contact-meta-item"><strong>Email</strong><a href="mailto:terrybush1234@gmail.com">terrybush1234@gmail.com</a></div>
+          <div class="contact-meta-item"><strong>Response Time</strong>24–48 hours</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S1 -->
+    <section class="doc-section" id="s1">
+      <div class="section-number">Section 1</div>
+      <h2>Getting Started</h2>
+      <h3>Download the App</h3>
+      <p>Search <strong>Golf League Manager Pro</strong> on the Apple App Store or Google Play Store. A one-time purchase of <strong>$9.99</strong> unlocks unlimited leagues on your device.</p>
+      <h3>First Launch</h3>
+      <p>When you open the app for the first time you will be prompted to join an existing league or create a new one. The app requires an internet connection to sync data across all devices in your league.</p>
+      <h3>Navigation</h3>
+      <p>The app has five main tabs at the bottom of the screen:</p>
+      <ul>
+        <li><strong>Tee Sheet</strong> — view groups, tee times, and enter scores</li>
+        <li><strong>Roster</strong> — sign up for game days and view game rules</li>
+        <li><strong>Results</strong> — view blind draw teams and final standings</li>
+        <li><strong>Admin</strong> — configure your league settings</li>
+        <li><strong>Profile</strong> — manage your account</li>
+      </ul>
+    </section>
+
+    <!-- S2 -->
+    <section class="doc-section" id="s2">
+      <div class="section-number">Section 2</div>
+      <h2>Joining or Creating a League</h2>
+      <h3>Switching Between Leagues</h3>
+      <p>Tap the league name banner at the top of the Tee Sheet to open the League Switcher. All leagues you have previously joined appear in the list. Tap <strong>Switch</strong> to jump between them instantly — no password required.</p>
+      <h3>Joining an Existing League</h3>
+      <ol class="steps">
+        <li>Tap the league name banner at the top of the Tee Sheet</li>
+        <li>Tap <strong>Join / Create New League</strong></li>
+        <li>Enter the League ID provided by your commissioner</li>
+        <li>Enter the League Password provided by your commissioner</li>
+        <li>Tap <strong>Join</strong> — you are now connected to that league</li>
+      </ol>
+      <h3>Creating a New League</h3>
+      <ol class="steps">
+        <li>Tap the league name banner at the top of the Tee Sheet</li>
+        <li>Tap <strong>Join / Create New League</strong></li>
+        <li>Enter a unique League ID — this is the identifier other players will use to find your league (e.g. "friday_four" or "villa_app")</li>
+        <li>You will be prompted to create a League Password — this is what other players enter when joining for the first time</li>
+        <li>Tap <strong>Create</strong> — your league is created with a blank template ready for setup</li>
+      </ol>
+      <h3>Sharing Your League</h3>
+      <p>Give your players the League ID and League Password. They enter these once when joining. After that they can switch to your league from their League Switcher without entering a password again.</p>
+    </section>
+
+    <!-- S3 -->
+    <section class="doc-section" id="s3">
+      <div class="section-number">Section 3</div>
+      <h2>Admin Setup</h2>
+      <h3>Registering as Admin</h3>
+      <p>Before you can edit any league settings you must claim admin access:</p>
+      <ol class="steps">
+        <li>Go to the Admin tab</li>
+        <li>Tap <strong>Register Admin</strong></li>
+        <li>Enter your admin password</li>
+        <li>Tap <strong>Confirm</strong> — admin is now locked to your device</li>
+      </ol>
+      <div class="info-box"><div class="info-box-label">Note</div>Only one device can hold admin access at a time. Other players can view settings but cannot change them.</div>
+      <h3>League Banner</h3>
+      <ul>
+        <li><strong>League Name</strong> — appears on all automated emails to the pro shop</li>
+        <li><strong>Timezone</strong> — set to your local timezone so all automated triggers fire at the correct local time</li>
+        <li>Tap the green <strong>Save</strong> button to save changes</li>
+      </ul>
+      <h3>Pro Shop Email</h3>
+      <p>Enter the pro shop's email address in the designated field. All automated communications — tee time requests, final player lists, and no-show notifications — are sent to this address automatically.</p>
+      <h3>Season Dates</h3>
+      <p>Set your Season Start and Season End dates. All automated emails and blind draws are suspended outside these dates so you never accidentally contact the pro shop during the off-season.</p>
+      <h3>Tee Groups</h3>
+      <p>Define the tee colors available at your course (e.g. Blue, White, Red, Gold). Once tee groups are configured, each player in the roster can be assigned a tee color. Tap <strong>ADD</strong> to add a color; tap the × on any chip to remove it. Removing a tee group clears that assignment from all players.</p>
+      <h3>Game Settings</h3>
+      <ul>
+        <li><strong>Game Mode</strong>
+          <ul>
+            <li><em>1 Best Ball</em> — 2-man teams. The tee draw always balances handicaps using snake distribution. At results time, if draw times match, partners are paired within tee sheet groups so you compete against the players you walk the course with. If draw times differ, partners are randomly paired across the field. Best net score per hole counts.</li>
+            <li><em>2 Best Ball</em> — tee sheet groups are the teams, always balanced by snake distribution. Works with twosomes, threesomes, and foursomes. Two best net scores per group per hole count.</li>
+            <li><em>Quota</em> — individual stableford-style points vs a personal target based on handicap.</li>
+          </ul>
+        </li>
+        <li><strong>All Net Birdies or Better Count</strong> — optional toggle for Best Ball modes. When enabled, if more players than the normal threshold make net birdie or better on a hole, all of their scores count.</li>
+        <li><strong>Course Length</strong> — 9 or 18 holes</li>
+        <li><strong>Bet Amount</strong> — entry fee per player displayed on results</li>
+        <li><strong>Skins Fee</strong> — skins entry fee per player</li>
+        <li><strong>Handicap Allowance %</strong> — 0% to 100% to adjust how much handicap is applied to net scores</li>
+        <li><strong>Gross Birdie Override (skins)</strong> — when enabled, a gross birdie or better wins the skin outright. A net birdie cannot beat a gross birdie.</li>
+      </ul>
+      <h3>Passwords</h3>
+      <ul>
+        <li><strong>League Password</strong> — what players enter when joining for the first time</li>
+        <li><strong>Admin Password</strong> — only for the commissioner to claim admin access. Keep this private.</li>
+      </ul>
+      <h3>Group Message</h3>
+      <p>Set a recurring automated message sent to all league members with an email on file. Enter the message text, select the day and time to send it. Useful for weekly sign-up reminders.</p>
+    </section>
+
+    <!-- S4 -->
+    <section class="doc-section" id="s4">
+      <div class="section-number">Section 4</div>
+      <h2>Day Manager</h2>
+      <p>The Day Manager is the heart of the app. Tap any day button (Sun through Sat) to configure that game day. Days highlighted in green are active game days.</p>
+      <h3>Activating a Day</h3>
+      <p>Inside the day settings modal tap <strong>Activate This Day</strong> to make it a play day. Deactivate it at any time to suppress all emails and draws for that day.</p>
+      <h3>Tee Times</h3>
+      <p>Enter the tee times for that day. The number of tee times × 4 sets the player cap automatically. For example, 3 tee times = maximum 12 players. These times are also included in the final player list email sent to the pro shop.</p>
+      <h3>Lockout Time</h3>
+      <p>The time when sign-ups close on game day. At this time:</p>
+      <ul>
+        <li>The roster is frozen — no new sign-ups or cancellations</li>
+        <li>The blind tee draw runs automatically</li>
+        <li>The final player list is emailed to the pro shop grouped by tee time</li>
+      </ul>
+      <h3>Results Draw Time</h3>
+      <p>The time when the Results tab unlocks and teams are paired. The draw runs automatically — no one needs to have the app open. If set to the same time as Lockout, results teams are drawn from within tee sheet groups so partners play together. If set to a different time, partners are randomly paired across the field.</p>
+      <h3>Pro Shop Advance Request</h3>
+      <p>Configure an automated tee time request sent to the pro shop before game day. Set the trigger day and time (typically 2–3 days before game day). The email counts current sign-ups, rounds up to the nearest foursome, and requests that many tee times. The player cap is updated automatically once sent.</p>
+    </section>
+
+    <!-- S5 -->
+    <section class="doc-section" id="s5">
+      <div class="section-number">Section 5</div>
+      <h2>Course Setup</h2>
+      <h3>Entering Hole Data</h3>
+      <p>The course grid shows all 18 holes (or 9 if configured). For each hole enter:</p>
+      <ul>
+        <li><strong>Par</strong> — the par for that hole</li>
+        <li><strong>Index</strong> — the handicap stroke index (1 = hardest, 18 = easiest)</li>
+      </ul>
+      <p>Fields highlighted in blue need to be filled in. Once entered they turn white.</p>
+      <h3>Course Library</h3>
+      <ol class="steps">
+        <li>Enter par and index for each hole</li>
+        <li>Tap <strong>Save As...</strong> and give the course a name</li>
+        <li>The course is saved to your library and can be loaded at any time from the dropdown</li>
+        <li>Tap <strong>Add New</strong> to start a fresh blank course</li>
+      </ol>
+    </section>
+
+    <!-- S6 -->
+    <section class="doc-section" id="s6">
+      <div class="section-number">Section 6</div>
+      <h2>Roster &amp; Sign-Up</h2>
+      <h3>Claiming Your Player Profile</h3>
+      <p>Before you can sign up for any game day you must claim your player profile. This is a one-time setup.</p>
+      <ol class="steps">
+        <li>Go to the Roster tab</li>
+        <li>Find your name and tap it</li>
+        <li>Tap <strong>Claim</strong> — your profile is now locked to this device</li>
+      </ol>
+      <div class="info-box tip"><div class="info-box-label">Tip</div>Your claim persists across weeks and app updates. If you get a new phone, the commissioner can release your claim so you can re-claim on your new device.</div>
+      <h3>Signup Status</h3>
+      <p>Each signup cycles through three states:</p>
+      <ul>
+        <li>⭕ <strong>OUT</strong> — not playing</li>
+        <li>✅ <strong>GAME</strong> — playing, entering the bet</li>
+        <li>💎 <strong>SKINS</strong> — playing and entering skins</li>
+      </ul>
+      <h3>Player Cap</h3>
+      <p>Once a game day reaches its cap it shows <strong>FULL</strong> and no additional players can sign up. The commissioner can increase the cap in Day Manager settings.</p>
+      <h3>Handicap Management</h3>
+      <p>Player handicaps are managed in the Admin tab. Handicap fields auto-save 1.5 seconds after you stop typing.</p>
+    </section>
+
+    <!-- S7 -->
+    <section class="doc-section" id="s7">
+      <div class="section-number">Section 7</div>
+      <h2>Tee Sheet &amp; Blind Draw</h2>
+      <h3>Before Lockout Time</h3>
+      <p>The tee sheet shows a countdown to the draw time. Players can see who is signed up but groups have not been assigned yet.</p>
+      <h3>At Lockout Time</h3>
+      <p>The blind draw runs automatically. Players are distributed across tee groups using a snake distribution by handicap — lowest handicap paired with highest, ensuring every group has a balanced mix of skill levels. Groups are assigned to tee times and the tee sheet updates immediately. The pro shop receives the final player list by email.</p>
+      <h3>Viewing and Claiming a Scorecard</h3>
+      <ul>
+        <li><strong>View Scorecard</strong> — opens the scorecard in read-only mode. Available to all players at any time after the draw.</li>
+        <li><strong>Claim &amp; Score</strong> — claims the scorecard for your device and opens it for score entry. Once claimed, the button changes to <strong>Edit Scorecard</strong>.</li>
+      </ul>
+      <h3>Moving a Player to a Different Tee Time</h3>
+      <ol class="steps">
+        <li>Tap the tee time shown next to the player's name</li>
+        <li>A list of all available tee times appears</li>
+        <li>Select the new tee time</li>
+        <li>The player is immediately reassigned and the tee sheet updates</li>
+      </ol>
+      <div class="info-box"><div class="info-box-label">1 Best Ball Note</div>If Lockout Time and Results Draw Time are the same, moving a player also moves their draw partner to the same tee slot and the results draw is rebuilt. If the two draw times differ, only the selected player moves.</div>
+      <h3>Forcing a Tee Draw</h3>
+      <p>Commissioners can force the tee draw at any time by tapping <strong>🎲 Force Tee Draw</strong> in the admin controls. This overwrites any existing tee sheet for the selected day. Requires at least 2 signed-up players.</p>
+    </section>
+
+    <!-- S8 -->
+    <section class="doc-section" id="s8">
+      <div class="section-number">Section 8</div>
+      <h2>Scorecard &amp; Live Scoring</h2>
+      <h3>Claiming a Scorecard</h3>
+      <p>Each group has one scorecard. One player per group claims it:</p>
+      <ol class="steps">
+        <li>Tap <strong>Claim &amp; Score</strong> on your group's tee time banner</li>
+        <li>The scorecard opens — only your device can now enter scores for this group</li>
+      </ol>
+      <p>Other players and anyone watching will see scores update live as they are entered.</p>
+      <h3>Entering Scores</h3>
+      <ul>
+        <li>Enter the gross score for each player on each hole</li>
+        <li>The app automatically calculates net scores based on handicap and course index</li>
+        <li>Running totals update in real time</li>
+        <li>Maximum score per hole is enforced based on handicap plus two strokes</li>
+      </ul>
+      <h3>DNF (Did Not Finish)</h3>
+      <p>If a player cannot complete the round tap the <strong>DNF</strong> toggle next to their name. They are excluded from the results draw.</p>
+      <h3>Saving Scores</h3>
+      <ul>
+        <li><strong>Save Scores</strong> — saves current scores and closes the scorecard. The app refreshes after 2 seconds.</li>
+        <li><strong>Close &amp; Exit</strong> — saves all scores and closes the scorecard.</li>
+      </ul>
+      <h3>Releasing a Locked Scorecard</h3>
+      <p>If a player's phone dies mid-round: go to the Admin tab → tap <strong>🔓 Reset Locks</strong>. Another player in the group can then claim the scorecard and continue entering scores.</p>
+    </section>
+
+    <!-- S9 -->
+    <section class="doc-section" id="s9">
+      <div class="section-number">Section 9</div>
+      <h2>Results &amp; Leaderboard</h2>
+      <h3>Results Tab Lock</h3>
+      <p>The Results tab is locked until the results draw time set in Day Manager. Before that time it shows a countdown — this prevents players from seeing team pairings before the round.</p>
+      <h3>The Results Draw</h3>
+      <p>At the results draw time, teams are paired automatically — no one needs to have the app open. In <strong>1 Best Ball</strong>, if draw time matches lockout time, partners are paired within tee sheet groups; otherwise randomly across the field. In <strong>2 Best Ball</strong>, tee sheet groups become teams automatically. In <strong>Quota</strong> mode each player competes individually.</p>
+      <h3>Scoring Display</h3>
+      <p>All Best Ball team scores display as +/− relative to par. E = even par, −2 = two under, +1 = one over.</p>
+      <h3>Color Coding</h3>
+      <ul>
+        <li><strong style="color:#2563eb;">Blue</strong> — the team's round is still in progress</li>
+        <li><strong style="color:#166534;">Green</strong> — all players in the team have completed their round</li>
+      </ul>
+      <h3>Calculating Results</h3>
+      <ol class="steps">
+        <li>Go to the Results tab</li>
+        <li>Tap <strong>Calculate</strong></li>
+        <li>Final standings appear showing team net scores, skins winners, and payouts</li>
+      </ol>
+      <h3>Skins</h3>
+      <p>Skins are calculated hole by hole from all players who paid the skins fee. The lowest net score on a hole wins outright. If two or more players tie, the skin carries over to the next hole. When Gross Birdie Override is enabled, a gross birdie or better wins the skin automatically.</p>
+      <h3>Clearing Results After a Score Correction</h3>
+      <ol class="steps">
+        <li>Fix the score on the scorecard</li>
+        <li>Go to Admin → tap <strong>🧹 Clear Result Teams and Redraw (Keep Scores)</strong></li>
+        <li>The draw clears and rebuilds automatically — scores are preserved</li>
+      </ol>
+    </section>
+
+    <!-- S10 -->
+    <section class="doc-section" id="s10">
+      <div class="section-number">Section 10</div>
+      <h2>Pro Shop Communications</h2>
+      <p>All pro shop emails are sent automatically. No action is required from the commissioner on game day.</p>
+      <div class="tool-card">
+        <div class="tool-name">A. Advance Tee Time Request</div>
+        <div class="tool-desc">Sent on the day and time configured in Day Manager. Counts signed-up players, rounds up to the nearest foursome, requests that many tee times, and sets the player cap. Subject: <em>Tee Time Request — [Date]</em></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">B. Final Player List</div>
+        <div class="tool-desc">Sent automatically at lockout time. Lists all players grouped by tee time. Subject: <em>FINAL PLAYER LIST: [League Name] — [Date]</em></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">C. No Players Notification</div>
+        <div class="tool-desc">Sent automatically at lockout time if no players have signed up. Notifies the pro shop that no tee times are needed. Subject: <em>NO PLAYERS TODAY: [League Name] — [Date]</em></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">D. No Tee Times Needed (Advance)</div>
+        <div class="tool-desc">If the advance request fires and there are no sign-ups yet, the pro shop receives an advance notice that no tee times will be needed.</div>
+      </div>
+      <div class="info-box tip"><div class="info-box-label">Deactivating a Day</div>Go to Day Manager → tap the day → tap <strong>Deactivate This Day</strong>. All emails for that day are automatically suppressed.</div>
+    </section>
+
+    <!-- S11 -->
+    <section class="doc-section" id="s11">
+      <div class="section-number">Section 11</div>
+      <h2>Weekly Reset</h2>
+      <p>Every Sunday at 3am the app automatically resets all leagues for the new week.</p>
+      <h3>What is cleared</h3>
+      <ul>
+        <li>All sign-ups</li>
+        <li>All tee assignments</li>
+        <li>All scores and score maps</li>
+        <li>All results draws</li>
+      </ul>
+      <h3>What is rebuilt</h3>
+      <ul>
+        <li>Player caps — automatically set from the number of tee times configured in Day Manager for each active game day</li>
+      </ul>
+      <h3>What is kept</h3>
+      <ul>
+        <li>All members and their handicaps</li>
+        <li>All league settings</li>
+        <li>Course setup</li>
+        <li>Season dates</li>
+        <li>Tee group assignments</li>
+        <li>Player device claims</li>
+      </ul>
+      <div class="info-box"><div class="info-box-label">Lookback</div>The current week's scores remain available until the following Sunday reset. After reset those scores are permanently removed.</div>
+    </section>
+
+    <!-- S12 -->
+    <section class="doc-section" id="s12">
+      <div class="section-number">Section 12</div>
+      <h2>Commissioner Tools</h2>
+      <p>Available in the Admin tab to registered admins only.</p>
+      <div class="tool-card">
+        <div class="tool-name">🔓 Reset Locks</div>
+        <div class="tool-desc">Releases all scorecard claims for the current day. Use this if a player's phone fails mid-round so another player in the group can take over scoring.</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">🧹 Clear Result Teams and Redraw (Keep Scores)</div>
+        <div class="tool-desc">Clears the results team pairings and flags for the current day only. All entered scores are preserved. Use this after correcting a score error — you do not need to re-enter scores.</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">🎲 Force Tee Draw</div>
+        <div class="tool-desc">Runs the blind tee sheet draw immediately using handicap-based snake distribution, overwriting any existing tee sheet for the selected day. Requires at least 2 players signed up.</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">🏆 Force Results Draw</div>
+        <div class="tool-desc">Runs the results team pairing immediately without waiting for the scheduled draw time. Existing scores are not affected. Requires at least 2 players.</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">🔄 Reset Week (Keep Roster)</div>
+        <div class="tool-desc">Clears all week data — sign-ups, tee assignments, scores, and results draws — and reloads the app. The member roster and all league settings are fully preserved. Use only as a last resort.</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">📵 Unclaim Player</div>
+        <div class="tool-desc">Releases a player's profile claim so they can re-claim on a new device. Only the commissioner can unclaim a player.</div>
+      </div>
+      <div class="tool-card" style="border-color:#c0392b;">
+        <div class="tool-name" style="color:#c0392b;">Delete League &amp; Admin Account</div>
+        <div class="tool-desc">Permanently deletes all league data and releases admin access. This cannot be undone. Use with extreme caution.</div>
+      </div>
+    </section>
+
+    <!-- S13 -->
+    <section class="doc-section" id="s13">
+      <div class="section-number">Section 13</div>
+      <h2>Troubleshooting</h2>
+
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Scores not updating after closing scorecard</div>
+        <div class="trouble-a">After pressing Save Scores or Close &amp; Exit the app automatically refreshes after 2 seconds. You will see "🔄 Refreshing scores..." before the update. If scores still appear outdated, tap the Refresh button on the tee sheet.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Date picker showing wrong week</div>
+        <div class="trouble-a">The date picker is constrained to the current golf week (Sunday through Saturday). If you have just come back from a previous week the calendar auto-advances to the current week on the next load.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Roster shows FULL but no one is signed up</div>
+        <div class="trouble-a">No cap has been set for that day. Go to Day Manager, open the settings for that day, confirm the tee times are entered, and tap Save. The cap will be set immediately.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Can't see my sign-up days on the Roster tab</div>
+        <div class="trouble-a">You need to claim your player profile first. Tap your name on the Roster tab and tap Claim. Once claimed your day slots will be visible.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Tapped another player's name by mistake</div>
+        <div class="trouble-a">If that player has already claimed their profile you will see a message that it is taken and no changes will be made. If they have not yet claimed, contact your commissioner.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Player got a new phone and can't claim their profile</div>
+        <div class="trouble-a">The player's old device still holds the claim. Go to Admin → find the player in the roster → tap Unclaim. The player can then open the app on their new device, tap their name, and tap Claim.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Pro shop did not receive the email</div>
+        <div class="trouble-a">Check that the pro shop email address is correctly entered in Admin settings, the game day is activated in Day Manager, and the lockout time has passed. Also check the pro shop's spam or junk folder.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">League settings changed by another player</div>
+        <div class="trouble-a">Only the registered admin can change settings. Go to Admin → Register Admin to reclaim access.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Scorecard locked and player's phone is unavailable</div>
+        <div class="trouble-a">Go to Admin → 🔓 Reset Locks to release all scorecard claims so another player can take over.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">App shows old league after switching</div>
+        <div class="trouble-a">Tap the league name banner and tap Switch on the correct league. The app will reload with the selected league's current data.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Results tab shows "Drawing..." but teams never appear</div>
+        <div class="trouble-a">The draw runs automatically at the results draw time. If it does not appear within a minute tap the Results tab again to refresh. If the issue persists go to Admin → 🏆 Force Results Draw.</div>
+      </div>
+      <div class="trouble-item" onclick="this.classList.toggle('open')">
+        <div class="trouble-q">Need to sign back in after update</div>
+        <div class="trouble-a">Anonymous sessions are cleared every 30 days. If you are prompted to rejoin simply re-enter your League ID and password — all your data and scores are preserved in the database.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <strong>Golf League Manager: Pro</strong> — Available on iOS and Android<br>
+  One-time purchase $9.99 · Unlimited leagues<br>
+  Support: <a href="mailto:terrybush1234@gmail.com">terrybush1234@gmail.com</a>
+</footer>
+
+<script>
+// Highlight active sidebar link on scroll
+const sections = document.querySelectorAll('.doc-section, #contact');
+const links = document.querySelectorAll('.sidebar a');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const a = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
