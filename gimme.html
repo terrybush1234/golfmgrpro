@@ -1,0 +1,406 @@
+<title>Gimme Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap">
+
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  height: 100dvh;
+  overflow: hidden;
+  background: #0e1a0e;
+  color: #dff0df;
+  font-family: 'DM Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+
+#cam-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#cam-denied {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #0e1a0e;
+  padding: 32px;
+  text-align: center;
+}
+#cam-denied.show { display: flex; }
+#cam-denied svg { opacity: 0.3; }
+#cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 600; }
+#cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; color: #7a9a7a; max-width: 280px; line-height: 1.45; }
+#cam-denied button {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  background: #e8f54d; color: #0e1a0e;
+  border: none; border-radius: 5px; padding: 12px 28px; cursor: pointer;
+  margin-top: 6px;
+}
+
+#cam-start {
+  display: flex;
+  position: absolute; inset: 0;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; background: #0e1a0e; padding: 32px; text-align: center;
+}
+#cam-start h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; color: #dff0df; }
+#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; color: #7a9a7a; max-width: 260px; line-height: 1.4; }
+#cam-start button {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  background: #e8f54d; color: #0e1a0e;
+  border: none; border-radius: 6px; padding: 14px 36px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bottom panel */
+#panel {
+  background: #0e1a0e;
+  border-top: 1px solid #1e321e;
+  padding: 14px 18px 20px;
+  flex-shrink: 0;
+}
+
+.step-dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.sdot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #2c422c;
+  transition: background 0.2s, transform 0.18s;
+}
+.sdot.active { background: #e8f54d; transform: scale(1.3); }
+.sdot.done   { background: #72d472; }
+.ssep { width: 20px; height: 1px; background: #2c422c; }
+
+#info-pane { min-height: 68px; }
+.eyebrow {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: #7a9a7a; margin-bottom: 4px;
+}
+.instr {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px; font-weight: 600;
+  color: #dff0df; line-height: 1.2;
+  text-wrap: balance;
+}
+
+#result-pane { display: none; min-height: 68px; flex-direction: column; gap: 2px; }
+#result-pane.show { display: flex; }
+.rlabel { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a; }
+#distance { font-size: 52px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
+#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+#verdict.good { color: #72d472; }
+#verdict.bad  { color: #e06060; }
+
+#btn-row { display: flex; gap: 9px; margin-top: 14px; }
+button {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  border: none; border-radius: 5px;
+  padding: 10px 18px; cursor: pointer;
+  transition: opacity 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+button:hover { opacity: 0.8; }
+button:focus-visible { outline: 2px solid #e8f54d; outline-offset: 2px; }
+#btn-again { flex: 1; background: #243824; color: #dff0df; }
+#btn-reset { background: #1c2e1c; color: #7a9a7a; }
+.hidden { display: none !important; }
+</style>
+
+<div id="cam-wrap">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="cam-start">
+    <h2>Gimme Check</h2>
+    <p>Point your camera at the hole and ball to measure the distance.</p>
+    <button id="btn-start-cam">Start Camera</button>
+  </div>
+  <div id="cam-denied">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dff0df" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+    <h2>Camera blocked</h2>
+    <p>Tap the lock icon in your browser address bar, set Camera to Allow, then reload.</p>
+    <button onclick="location.reload()">Reload</button>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="step-dots">
+    <div class="sdot" id="sd0"></div>
+    <div class="ssep"></div>
+    <div class="sdot" id="sd1"></div>
+  </div>
+
+  <div id="info-pane">
+    <div class="eyebrow" id="eyebrow">Mark the hole</div>
+    <div class="instr" id="instr">Press and drag from the hole center to its edge</div>
+  </div>
+
+  <div id="result-pane">
+    <div class="rlabel">Distance to hole</div>
+    <div id="distance">—</div>
+    <div id="verdict"></div>
+  </div>
+
+  <div id="btn-row">
+    <button id="btn-again">Measure Again</button>
+    <button id="btn-reset" class="hidden">Reset Hole</button>
+  </div>
+</div>
+
+<script>
+const video    = document.getElementById('video');
+const overlay  = document.getElementById('overlay');
+const ctx      = overlay.getContext('2d');
+const denied   = document.getElementById('cam-denied');
+const eyebrow  = document.getElementById('eyebrow');
+const instr    = document.getElementById('instr');
+const infoPane = document.getElementById('info-pane');
+const resPane  = document.getElementById('result-pane');
+const distEl   = document.getElementById('distance');
+const verdEl   = document.getElementById('verdict');
+const btnAgain = document.getElementById('btn-again');
+const btnReset = document.getElementById('btn-reset');
+const dots     = [document.getElementById('sd0'), document.getElementById('sd1')];
+
+const HOLE_DIA_IN = 4.25;
+const GIMME_IN    = 24;
+
+// State
+let phase = 'hole'; // 'hole' | 'ball' | 'result'
+let dragging = false;
+let dragStart = null, dragCurrent = null;
+let holeCenter = null, holeRadPx = null, pxPerIn = null;
+let ballPt = null;
+
+// ── Camera ──────────────────────────────────────────────
+const camStart = document.getElementById('cam-start');
+document.getElementById('btn-start-cam').addEventListener('click', initCamera);
+
+async function initCamera() {
+  camStart.style.display = 'none';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }
+    });
+    video.srcObject = stream;
+  } catch (err) {
+    console.error(err);
+    denied.classList.add('show');
+  }
+}
+video.addEventListener('loadedmetadata', syncCanvas);
+window.addEventListener('resize', syncCanvas);
+function syncCanvas() {
+  const r = overlay.parentElement.getBoundingClientRect();
+  overlay.width = r.width; overlay.height = r.height;
+  redraw();
+}
+
+// ── Coords ──────────────────────────────────────────────
+function pt(e) {
+  const r = overlay.getBoundingClientRect();
+  const s = e.changedTouches ? e.changedTouches[0] : (e.touches ? e.touches[0] : e);
+  return { x: (s.clientX - r.left) * (overlay.width / r.width),
+           y: (s.clientY - r.top)  * (overlay.height / r.height) };
+}
+function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
+
+// ── Draw ────────────────────────────────────────────────
+function drawDot(p, col, r = 9) {
+  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y, r + 3.5, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+function drawCircle(c, r, col, lw = 2, alpha = 1) {
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI*2);
+  ctx.strokeStyle = col; ctx.lineWidth = lw;
+  ctx.setLineDash([]); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawLine(a, b, col) {
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
+}
+
+function badge(txt, p, col, above = true) {
+  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(txt).width + 10, h = 20;
+  const bx = p.x - w/2, by = p.y - (above ? h + 8 : -8);
+  ctx.fillStyle = 'rgba(14,26,14,0.8)';
+  ctx.beginPath(); ctx.roundRect(bx, by, w, h, 3); ctx.fill();
+  ctx.fillStyle = col; ctx.fillText(txt, p.x, by + h/2);
+}
+
+function redraw() {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  // Live drag preview
+  if (phase === 'hole' && dragging && dragStart && dragCurrent) {
+    const r = dist(dragStart, dragCurrent);
+    drawCircle(dragStart, r, '#e8f54d', 2, 0.7);
+    drawDot(dragStart, '#e8f54d', 5);
+    drawDot(dragCurrent, '#e8f54d', 5);
+    // radius line
+    ctx.beginPath(); ctx.moveTo(dragStart.x, dragStart.y); ctx.lineTo(dragCurrent.x, dragCurrent.y);
+    ctx.strokeStyle = 'rgba(232,245,77,0.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+    return;
+  }
+
+  // Locked hole
+  if (holeCenter) {
+    drawCircle(holeCenter, holeRadPx, 'rgba(232,245,77,0.5)', 2);
+    drawDot(holeCenter, '#e8f54d', 6);
+  }
+
+  // Ball + measurement line
+  if (phase === 'result' && ballPt) {
+    drawLine(holeCenter, ballPt, '#72d472');
+    drawDot(ballPt, '#72d472');
+    const mid = { x: (holeCenter.x + ballPt.x)/2, y: (holeCenter.y + ballPt.y)/2 };
+    const above = ballPt.y > holeCenter.y;
+    badge((dist(holeCenter, ballPt) / pxPerIn).toFixed(1) + '"', mid, '#72d472', above);
+  }
+}
+
+// ── Pointer events ───────────────────────────────────────
+function onDown(e) {
+  e.preventDefault();
+  if (phase !== 'hole') return;
+  dragging = true;
+  dragStart = pt(e); dragCurrent = { ...dragStart };
+  redraw();
+}
+
+function onMove(e) {
+  e.preventDefault();
+  if (!dragging) return;
+  dragCurrent = pt(e);
+  redraw();
+}
+
+function onUp(e) {
+  e.preventDefault();
+  if (phase === 'hole' && dragging && dragStart) {
+    const endPt = pt(e);
+    const r = dist(dragStart, endPt);
+    if (r > 10) { // require a real drag, not an accidental tap
+      holeCenter = dragStart;
+      holeRadPx  = r;
+      pxPerIn    = (r * 2) / HOLE_DIA_IN;
+      dragging = false; dragStart = null; dragCurrent = null;
+      phase = 'ball';
+      updateUI(); redraw();
+    } else {
+      dragging = false; dragStart = null; dragCurrent = null;
+      redraw();
+    }
+  } else if (phase === 'ball') {
+    ballPt = pt(e);
+    const inches = dist(holeCenter, ballPt) / pxPerIn;
+    distEl.textContent = inches.toFixed(1) + ' in';
+    if (inches <= GIMME_IN) {
+      verdEl.textContent = 'Gimme — within 24"';
+      verdEl.className = 'good';
+    } else {
+      verdEl.textContent = 'Putt it out — outside 24"';
+      verdEl.className = 'bad';
+    }
+    phase = 'result';
+    updateUI(); redraw();
+  }
+}
+
+overlay.addEventListener('mousedown',  onDown);
+overlay.addEventListener('mousemove',  onMove);
+overlay.addEventListener('mouseup',    onUp);
+overlay.addEventListener('touchstart', onDown, { passive: false });
+overlay.addEventListener('touchmove',  onMove, { passive: false });
+overlay.addEventListener('touchend',   onUp,   { passive: false });
+
+// ── Buttons ──────────────────────────────────────────────
+btnAgain.addEventListener('click', () => {
+  ballPt = null;
+  phase = 'ball';
+  updateUI(); redraw();
+});
+btnReset.addEventListener('click', () => {
+  holeCenter = holeRadPx = pxPerIn = ballPt = null;
+  dragging = false; dragStart = null; dragCurrent = null;
+  phase = 'hole';
+  updateUI(); redraw();
+});
+
+// ── UI ───────────────────────────────────────────────────
+function updateUI() {
+  const map = {
+    hole:   { eye: 'Step 1 — Mark hole', ins: 'Press and drag from hole center to edge', d: ['active',''] },
+    ball:   { eye: 'Step 2 — Measure',   ins: 'Tap the center of the golf ball',          d: ['done','active'] },
+    result: { eye: '',                   ins: '',                                          d: ['done','done'] },
+  };
+  const s = map[phase];
+  eyebrow.textContent = s.eye;
+  instr.textContent   = s.ins;
+  dots.forEach((d, i) => {
+    d.className = 'sdot';
+    if (s.d[i] === 'active') d.classList.add('active');
+    if (s.d[i] === 'done')   d.classList.add('done');
+  });
+  if (phase === 'result') {
+    infoPane.style.display = 'none';
+    resPane.classList.add('show');
+    btnReset.classList.remove('hidden');
+  } else {
+    infoPane.style.display = '';
+    resPane.classList.remove('show');
+    btnReset.classList.add('hidden');
+  }
+}
+
+updateUI();
+syncCanvas();
+// camera starts on button tap, not automatically
+</script>
