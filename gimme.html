@@ -135,6 +135,11 @@ button:focus-visible { outline: 2px solid #e8f54d; outline-offset: 2px; }
     <div class="eyebrow" id="eyebrow">Step 1 — Find the hole</div>
     <div class="instr" id="instr">Tap the center of the hole</div>
   </div>
+  <div id="size-pane" class="hidden" style="margin-bottom:4px;">
+    <div class="eyebrow" style="margin-bottom:6px;">Adjust hole size if needed</div>
+    <input type="range" id="size-slider" min="0.5" max="2.0" step="0.05" value="1.0"
+      style="width:100%;accent-color:#e8f54d;cursor:pointer;">
+  </div>
   <div id="result-pane">
     <div class="rlabel">Distance to hole</div>
     <div id="distance">—</div>
@@ -173,8 +178,18 @@ const offscreen = document.createElement('canvas');
 const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
 
 let phase = 'hole'; // 'hole' | 'ball' | 'result'
-let holeCenter = null, holeRadPx = null, pxPerIn = null;
+let holeCenter = null, holeRadPxRaw = null, holeRadPx = null, pxPerIn = null;
 let ballPt = null;
+let sizeScale = 1.0;
+
+const sizePane   = document.getElementById('size-pane');
+const sizeSlider = document.getElementById('size-slider');
+sizeSlider.addEventListener('input', () => {
+  sizeScale = parseFloat(sizeSlider.value);
+  holeRadPx = holeRadPxRaw * sizeScale;
+  pxPerIn   = (holeRadPx * 2) / HOLE_DIA_IN;
+  redraw();
+});
 
 // ── Camera ──────────────────────────────────────────────
 document.getElementById('btn-start-cam').addEventListener('click', initCamera);
@@ -320,7 +335,10 @@ function onTap(e) {
   if (phase === 'hole') {
     const r = detectHole(p.x, p.y);
     if (r) {
-      holeCenter = p;
+      holeCenter   = p;
+      holeRadPxRaw = r;
+      sizeScale    = 1.0;
+      sizeSlider.value = '1.0';
       holeRadPx  = r;
       pxPerIn    = (r * 2) / HOLE_DIA_IN;
       phase = 'ball';
@@ -379,10 +397,12 @@ function updateUI() {
   if (phase === 'result') {
     infoPane.style.display = 'none';
     resPane.classList.add('show');
+    sizePane.classList.add('hidden');
     btnReset.classList.remove('hidden');
   } else {
     infoPane.style.display = '';
     resPane.classList.remove('show');
+    sizePane.classList.toggle('hidden', phase !== 'ball');
     btnReset.classList.toggle('hidden', phase === 'hole');
   }
 }
