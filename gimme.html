@@ -162,11 +162,11 @@ const btnAgain = document.getElementById('btn-again');
 const btnReset = document.getElementById('btn-reset');
 const dots     = [document.getElementById('sd0'), document.getElementById('sd1')];
 
-const HOLE_DIA_IN = 4.25;
-const GIMME_IN    = 24;
-const NUM_RAYS    = 24;
-const DARK_LUMA   = 70; // threshold: pixels darker than this are "hole"
-const MIN_RADIUS  = 8;  // min px for a valid detection
+const HOLE_DIA_IN   = 4.25;
+const GIMME_IN      = 24;
+const NUM_RAYS      = 24;
+const COLOR_THRESH  = 45; // RGB distance — pixels within this of tap color are "same region"
+const MIN_RADIUS    = 8;  // min px for a valid detection
 
 // offscreen canvas for pixel sampling
 const offscreen = document.createElement('canvas');
@@ -208,30 +208,31 @@ function captureFrame() {
   offCtx.drawImage(video, 0, 0, offscreen.width, offscreen.height);
 }
 
-function getLuma(x, y) {
-  const d = offCtx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-  return 0.299 * d[0] + 0.587 * d[1] + 0.114 * d[2];
+function getPixel(x, y) {
+  return offCtx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
 }
 
-function isDark(x, y) {
-  if (x < 0 || y < 0 || x >= offscreen.width || y >= offscreen.height) return false;
-  return getLuma(x, y) < DARK_LUMA;
+function colorDist(a, b) {
+  return Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2);
 }
 
 function detectHole(tapX, tapY) {
   captureFrame();
+  const refColor = getPixel(tapX, tapY);
 
-  // Check tap is on a dark pixel
-  if (!isDark(tapX, tapY)) return null;
+  function isSameRegion(x, y) {
+    if (x < 0 || y < 0 || x >= offscreen.width || y >= offscreen.height) return false;
+    return colorDist(refColor, getPixel(x, y)) < COLOR_THRESH;
+  }
 
-  // Shoot rays outward, find where dark ends
+  // Shoot rays outward, find where color changes
   const radii = [];
   for (let i = 0; i < NUM_RAYS; i++) {
     const angle = (i / NUM_RAYS) * Math.PI * 2;
     const dx = Math.cos(angle), dy = Math.sin(angle);
     let r = 1;
     while (r < 300) {
-      if (!isDark(tapX + dx * r, tapY + dy * r)) {
+      if (!isSameRegion(tapX + dx * r, tapY + dy * r)) {
         radii.push(r - 1);
         break;
       }
@@ -325,8 +326,7 @@ function onTap(e) {
       phase = 'ball';
       updateUI();
     } else {
-      // Flash error in instruction
-      instr.textContent = "Couldn't see the hole — tap darker center";
+      instr.textContent = "No edge found — tap squarely on the hole";
       setTimeout(() => { instr.textContent = 'Tap the center of the hole'; }, 2000);
     }
     redraw();
@@ -383,7 +383,7 @@ function updateUI() {
   } else {
     infoPane.style.display = '';
     resPane.classList.remove('show');
-    btnReset.classList.add('hidden');
+    btnReset.classList.toggle('hidden', phase === 'hole');
   }
 }
 
