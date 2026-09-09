@@ -30,81 +30,98 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #cam-start {
   display: flex; position: absolute; inset: 0;
   flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; background: #0e1a0e; padding: 32px; text-align: center;
+  gap: 20px; background: #0e1a0e; padding: 32px; text-align: center;
 }
-#cam-start h2 {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 26px; font-weight: 700; color: #dff0df;
-}
-#cam-start p {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 17px; color: #7a9a7a; max-width: 260px; line-height: 1.4;
-}
+#cam-start h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 700; }
+#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
 #cam-start button {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
   letter-spacing: 0.07em; text-transform: uppercase;
   background: #e8f54d; color: #0e1a0e;
-  border: none; border-radius: 6px; padding: 14px 36px; cursor: pointer;
+  border: none; border-radius: 8px; padding: 16px 40px; cursor: pointer;
 }
 
-/* Denied screen */
+/* Denied */
 #cam-denied {
   display: none; position: absolute; inset: 0;
   flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; background: #0e1a0e; padding: 32px; text-align: center;
+  gap: 16px; background: #0e1a0e; padding: 32px; text-align: center;
 }
 #cam-denied.show { display: flex; }
-#cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 600; }
-#cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; color: #7a9a7a; max-width: 280px; line-height: 1.45; }
+#cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 600; }
+#cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #7a9a7a; max-width: 280px; line-height: 1.45; }
 #cam-denied button {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700;
-  letter-spacing: 0.07em; text-transform: uppercase;
-  background: #e8f54d; color: #0e1a0e;
-  border: none; border-radius: 5px; padding: 12px 28px; cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
+  background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 14px 32px; cursor: pointer;
 }
 
-/* Bottom panel */
+/* Panel */
 #panel {
-  background: #0e1a0e; border-top: 1px solid #1e321e;
-  padding: 14px 18px 20px; flex-shrink: 0;
+  background: #0e1a0e; border-top: 2px solid #243824;
+  padding: 16px 18px 20px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 12px;
 }
 
-.step-dots { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
-.sdot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #2c422c; transition: background 0.2s, transform 0.18s;
-}
+/* Step dots */
+.step-dots { display: flex; align-items: center; gap: 8px; }
+.sdot { width: 10px; height: 10px; border-radius: 50%; background: #2c422c; transition: background 0.2s, transform 0.18s; }
 .sdot.active { background: #e8f54d; transform: scale(1.3); }
 .sdot.done   { background: #72d472; }
-.ssep { width: 20px; height: 1px; background: #2c422c; }
+.ssep { width: 24px; height: 1px; background: #2c422c; }
 
-#info-pane { min-height: 68px; }
+/* Instruction */
 .eyebrow {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600;
-  letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a; margin-bottom: 4px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600;
+  letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a;
 }
 .instr {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 600;
-  color: #dff0df; line-height: 1.2; text-wrap: balance;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 600;
+  color: #dff0df; line-height: 1.2;
 }
 
-#result-pane { display: none; min-height: 68px; flex-direction: column; gap: 2px; }
+/* Gimme distance picker */
+#gimme-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.gimme-btn {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
+  letter-spacing: 0.04em;
+  background: #1c2e1c; color: #7a9a7a;
+  border: 2px solid #2c422c; border-radius: 6px;
+  padding: 8px 14px; cursor: pointer; flex: 1;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.gimme-btn.active { background: #243824; color: #e8f54d; border-color: #e8f54d; }
+
+/* Size slider */
+#size-pane { display: flex; flex-direction: column; gap: 8px; }
+#size-label {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
+  color: #e8f54d; letter-spacing: 0.04em;
+}
+#size-slider {
+  width: 100%; height: 32px;
+  accent-color: #e8f54d; cursor: pointer;
+}
+
+/* Result */
+#result-pane { display: none; flex-direction: column; gap: 4px; }
 #result-pane.show { display: flex; }
-.rlabel { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a; }
-#distance { font-size: 52px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
-#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.rlabel { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a; }
+#distance { font-size: 60px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: #e8f54d; }
+#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 #verdict.good { color: #72d472; }
 #verdict.bad  { color: #e06060; }
 
-#btn-row { display: flex; gap: 9px; margin-top: 14px; }
-button {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700;
-  letter-spacing: 0.07em; text-transform: uppercase;
-  border: none; border-radius: 5px; padding: 10px 18px; cursor: pointer;
+/* Buttons */
+#btn-row { display: flex; gap: 10px; }
+button.action {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border: none; border-radius: 6px; padding: 12px 20px; cursor: pointer;
   transition: opacity 0.12s; -webkit-tap-highlight-color: transparent;
 }
-button:hover { opacity: 0.8; }
-button:focus-visible { outline: 2px solid #e8f54d; outline-offset: 2px; }
+button.action:hover { opacity: 0.8; }
 #btn-again { flex: 1; background: #243824; color: #dff0df; }
 #btn-reset { background: #1c2e1c; color: #7a9a7a; }
 .hidden { display: none !important; }
@@ -115,12 +132,12 @@ button:focus-visible { outline: 2px solid #e8f54d; outline-offset: 2px; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Point your camera straight down at the hole and ball to measure the distance.</p>
+    <p>Point camera at the hole and ball to measure distance.</p>
     <button id="btn-start-cam">Start Camera</button>
   </div>
   <div id="cam-denied">
     <h2>Camera blocked</h2>
-    <p>Tap the lock icon in your browser address bar, set Camera to Allow, then reload.</p>
+    <p>Tap the lock icon in the address bar, set Camera to Allow, then reload.</p>
     <button onclick="location.reload()">Reload</button>
   </div>
 </div>
@@ -131,23 +148,41 @@ button:focus-visible { outline: 2px solid #e8f54d; outline-offset: 2px; }
     <div class="ssep"></div>
     <div class="sdot" id="sd1"></div>
   </div>
+
+  <!-- Gimme distance selector (always visible) -->
+  <div>
+    <div class="eyebrow" style="margin-bottom:6px;">Gimme distance</div>
+    <div id="gimme-row">
+      <button class="gimme-btn" data-in="12">12"</button>
+      <button class="gimme-btn" data-in="18">18"</button>
+      <button class="gimme-btn active" data-in="24">24"</button>
+      <button class="gimme-btn" data-in="36">36"</button>
+    </div>
+  </div>
+
+  <!-- Instruction (hole + ball phases) -->
   <div id="info-pane">
     <div class="eyebrow" id="eyebrow">Step 1 — Find the hole</div>
     <div class="instr" id="instr">Tap the center of the hole</div>
   </div>
-  <div id="size-pane" class="hidden" style="margin-bottom:8px;">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;color:#e8f54d;margin-bottom:8px;">⬅ Adjust hole size ➡</div>
-    <input type="range" id="size-slider" min="0.5" max="2.0" step="0.05" value="1.0"
-      style="width:100%;height:28px;accent-color:#e8f54d;cursor:pointer;">
+
+  <!-- Size slider (ball phase only) -->
+  <div id="size-pane" class="hidden">
+    <div id="size-label">⬅ Adjust circle size ➡</div>
+    <input type="range" id="size-slider" min="0.5" max="2.0" step="0.05" value="1.0">
   </div>
+
+  <!-- Result -->
   <div id="result-pane">
     <div class="rlabel">Distance to hole</div>
     <div id="distance">—</div>
     <div id="verdict"></div>
   </div>
+
+  <!-- Buttons -->
   <div id="btn-row">
-    <button id="btn-again">Measure Again</button>
-    <button id="btn-reset" class="hidden">Reset</button>
+    <button class="action" id="btn-again">Measure Again</button>
+    <button class="action hidden" id="btn-reset">Reset Hole</button>
   </div>
 </div>
 
@@ -160,6 +195,8 @@ const denied   = document.getElementById('cam-denied');
 const eyebrow  = document.getElementById('eyebrow');
 const instr    = document.getElementById('instr');
 const infoPane = document.getElementById('info-pane');
+const sizePane = document.getElementById('size-pane');
+const sizeSlider = document.getElementById('size-slider');
 const resPane  = document.getElementById('result-pane');
 const distEl   = document.getElementById('distance');
 const verdEl   = document.getElementById('verdict');
@@ -167,33 +204,37 @@ const btnAgain = document.getElementById('btn-again');
 const btnReset = document.getElementById('btn-reset');
 const dots     = [document.getElementById('sd0'), document.getElementById('sd1')];
 
-const HOLE_DIA_IN   = 4.25;
-const GIMME_IN      = 24;
-const NUM_RAYS      = 24;
-const COLOR_THRESH  = 45; // RGB distance — pixels within this of tap color are "same region"
-const MIN_RADIUS    = 8;  // min px for a valid detection
+const HOLE_DIA_IN  = 4.25;
+const NUM_RAYS     = 24;
+const COLOR_THRESH = 45;
+const MIN_RADIUS   = 8;
 
-// offscreen canvas for pixel sampling
+let gimmeIn = 24;
+document.querySelectorAll('.gimme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.gimme-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    gimmeIn = parseInt(btn.dataset.in);
+    if (phase === 'result' && ballPt) showResult(dist(holeCenter, ballPt) / pxPerIn);
+  });
+});
+
 const offscreen = document.createElement('canvas');
 const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
 
-let phase = 'hole'; // 'hole' | 'ball' | 'result'
+let phase = 'hole';
 let holeCenter = null, holeRadPxRaw = null, holeRadPx = null, pxPerIn = null;
 let ballPt = null;
-let sizeScale = 1.0;
 
-const sizePane   = document.getElementById('size-pane');
-const sizeSlider = document.getElementById('size-slider');
 sizeSlider.addEventListener('input', () => {
-  sizeScale = parseFloat(sizeSlider.value);
-  holeRadPx = holeRadPxRaw * sizeScale;
+  const scale = parseFloat(sizeSlider.value);
+  holeRadPx = holeRadPxRaw * scale;
   pxPerIn   = (holeRadPx * 2) / HOLE_DIA_IN;
   redraw();
 });
 
 // ── Camera ──────────────────────────────────────────────
 document.getElementById('btn-start-cam').addEventListener('click', initCamera);
-
 async function initCamera() {
   camStart.style.display = 'none';
   try {
@@ -202,189 +243,154 @@ async function initCamera() {
     });
     video.srcObject = stream;
   } catch (err) {
-    console.error(err);
     denied.classList.add('show');
   }
 }
-
 video.addEventListener('loadedmetadata', syncCanvas);
 window.addEventListener('resize', syncCanvas);
 function syncCanvas() {
   const r = overlay.parentElement.getBoundingClientRect();
-  overlay.width  = r.width;
-  overlay.height = r.height;
-  offscreen.width  = r.width;
-  offscreen.height = r.height;
+  overlay.width = offscreen.width = r.width;
+  overlay.height = offscreen.height = r.height;
   redraw();
 }
 
-// ── Pixel sampling ───────────────────────────────────────
+// ── Pixel detection ──────────────────────────────────────
 function captureFrame() {
   offCtx.drawImage(video, 0, 0, offscreen.width, offscreen.height);
 }
-
 function getPixel(x, y) {
   return offCtx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
 }
-
 function colorDist(a, b) {
   return Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2);
 }
-
 function detectHole(tapX, tapY) {
   captureFrame();
-  const refColor = getPixel(tapX, tapY);
-
-  function isSameRegion(x, y) {
+  const ref = getPixel(tapX, tapY);
+  function same(x, y) {
     if (x < 0 || y < 0 || x >= offscreen.width || y >= offscreen.height) return false;
-    return colorDist(refColor, getPixel(x, y)) < COLOR_THRESH;
+    return colorDist(ref, getPixel(x, y)) < COLOR_THRESH;
   }
-
-  // Shoot rays outward, find where color changes
   const radii = [];
   for (let i = 0; i < NUM_RAYS; i++) {
     const angle = (i / NUM_RAYS) * Math.PI * 2;
     const dx = Math.cos(angle), dy = Math.sin(angle);
     let r = 1;
     while (r < 300) {
-      if (!isSameRegion(tapX + dx * r, tapY + dy * r)) {
-        radii.push(r - 1);
-        break;
-      }
+      if (!same(tapX + dx * r, tapY + dy * r)) { radii.push(r - 1); break; }
       r++;
     }
     if (r >= 300) radii.push(null);
   }
-
   const valid = radii.filter(r => r !== null && r >= MIN_RADIUS);
-  if (valid.length < NUM_RAYS * 0.5) return null; // not enough rays agree
-
-  // Remove outliers (shadows etc) — keep inner 80%
+  if (valid.length < NUM_RAYS * 0.5) return null;
   valid.sort((a, b) => a - b);
   const trim = Math.floor(valid.length * 0.1);
   const trimmed = valid.slice(trim, valid.length - trim);
   const avg = trimmed.reduce((s, v) => s + v, 0) / trimmed.length;
-
-  if (avg < MIN_RADIUS) return null;
-  return avg;
+  return avg < MIN_RADIUS ? null : avg;
 }
 
-// ── Coords ──────────────────────────────────────────────
+// ── Coords ───────────────────────────────────────────────
 function pt(e) {
   const r = overlay.getBoundingClientRect();
   const s = e.changedTouches ? e.changedTouches[0] : e;
-  return {
-    x: (s.clientX - r.left) * (overlay.width / r.width),
-    y: (s.clientY - r.top)  * (overlay.height / r.height)
-  };
+  return { x: (s.clientX - r.left) * (overlay.width / r.width),
+           y: (s.clientY - r.top)  * (overlay.height / r.height) };
 }
 function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
 
-// ── Draw ────────────────────────────────────────────────
-function drawDot(p, col, r = 9) {
-  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+// ── Draw ─────────────────────────────────────────────────
+function drawDot(p, col, r = 10) {
+  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
   ctx.fillStyle = col; ctx.fill();
-  ctx.beginPath(); ctx.arc(p.x, p.y, r + 3.5, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.stroke();
 }
-
-function drawCircle(c, r, col, lw = 2, alpha = 1) {
+function drawCircle(c, r, col, lw = 2.5, alpha = 1) {
   ctx.globalAlpha = alpha;
-  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI*2);
   ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
   ctx.globalAlpha = 1;
 }
-
 function drawLine(a, b, col) {
   ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-  ctx.strokeStyle = col; ctx.lineWidth = 2;
-  ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+  ctx.setLineDash([8, 5]); ctx.stroke(); ctx.setLineDash([]);
 }
-
-function badge(txt, p, col, above = true) {
-  ctx.font = '500 12px "DM Mono", monospace';
+function badge(txt, p, col, above) {
+  ctx.font = 'bold 14px "DM Mono", monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(txt).width + 10, h = 20;
-  const bx = p.x - w / 2, by = p.y - (above ? h + 8 : -8);
-  ctx.fillStyle = 'rgba(14,26,14,0.8)';
-  ctx.beginPath(); ctx.roundRect(bx, by, w, h, 3); ctx.fill();
-  ctx.fillStyle = col; ctx.fillText(txt, p.x, by + h / 2);
+  const w = ctx.measureText(txt).width + 14, h = 24;
+  const bx = p.x - w/2, by = p.y - (above ? h + 10 : -10);
+  ctx.fillStyle = 'rgba(14,26,14,0.85)';
+  ctx.beginPath(); ctx.roundRect(bx, by, w, h, 4); ctx.fill();
+  ctx.fillStyle = col; ctx.fillText(txt, p.x, by + h/2);
 }
-
 function redraw() {
   ctx.clearRect(0, 0, overlay.width, overlay.height);
-
   if (holeCenter && holeRadPx) {
-    drawCircle(holeCenter, holeRadPx, 'rgba(232,245,77,0.55)', 2);
-    drawDot(holeCenter, '#e8f54d', 5);
+    drawCircle(holeCenter, holeRadPx, 'rgba(232,245,77,0.6)', 2.5);
+    drawDot(holeCenter, '#e8f54d', 6);
   }
-
   if (phase === 'result' && ballPt) {
     drawLine(holeCenter, ballPt, '#72d472');
     drawDot(ballPt, '#72d472');
-    const mid = { x: (holeCenter.x + ballPt.x) / 2, y: (holeCenter.y + ballPt.y) / 2 };
-    badge((dist(holeCenter, ballPt) / pxPerIn).toFixed(1) + '"', mid, '#72d472', ballPt.y > holeCenter.y);
+    const mid = { x: (holeCenter.x + ballPt.x)/2, y: (holeCenter.y + ballPt.y)/2 };
+    badge((dist(holeCenter, ballPt)/pxPerIn).toFixed(1)+'"', mid, '#72d472', ballPt.y > holeCenter.y);
   }
 }
 
-// ── Tap ─────────────────────────────────────────────────
+// ── Tap ──────────────────────────────────────────────────
 function onTap(e) {
   e.preventDefault();
   const p = pt(e);
-
   if (phase === 'hole') {
     const r = detectHole(p.x, p.y);
     if (r) {
-      holeCenter   = p;
-      holeRadPxRaw = r;
-      sizeScale    = 1.0;
+      holeCenter = p; holeRadPxRaw = r; holeRadPx = r;
+      pxPerIn = (r * 2) / HOLE_DIA_IN;
       sizeSlider.value = '1.0';
-      holeRadPx  = r;
-      pxPerIn    = (r * 2) / HOLE_DIA_IN;
-      phase = 'ball';
-      updateUI();
+      phase = 'ball'; updateUI();
     } else {
-      instr.textContent = "No edge found — tap squarely on the hole";
+      instr.textContent = "No edge found — tap on the hole";
       setTimeout(() => { instr.textContent = 'Tap the center of the hole'; }, 2000);
     }
     redraw();
-
   } else if (phase === 'ball') {
     ballPt = p;
-    const inches = dist(holeCenter, ballPt) / pxPerIn;
-    distEl.textContent = inches.toFixed(1) + ' in';
-    if (inches <= GIMME_IN) {
-      verdEl.textContent = 'Gimme — within 24"';
-      verdEl.className = 'good';
-    } else {
-      verdEl.textContent = 'Putt it out — outside 24"';
-      verdEl.className = 'bad';
-    }
-    phase = 'result';
-    updateUI();
-    redraw();
+    showResult(dist(holeCenter, ballPt) / pxPerIn);
+    phase = 'result'; updateUI(); redraw();
+  }
+}
+overlay.addEventListener('click', onTap);
+overlay.addEventListener('touchend', onTap, { passive: false });
+
+function showResult(inches) {
+  distEl.textContent = inches.toFixed(1) + ' in';
+  if (inches <= gimmeIn) {
+    verdEl.textContent = `Gimme — within ${gimmeIn}"`;
+    verdEl.className = 'good';
+  } else {
+    verdEl.textContent = `Putt it out — outside ${gimmeIn}"`;
+    verdEl.className = 'bad';
   }
 }
 
-overlay.addEventListener('click',      onTap);
-overlay.addEventListener('touchend',   onTap, { passive: false });
-
-// ── Buttons ──────────────────────────────────────────────
-btnAgain.addEventListener('click', () => {
-  ballPt = null; phase = 'ball';
-  updateUI(); redraw();
-});
+// ── Buttons ───────────────────────────────────────────────
+btnAgain.addEventListener('click', () => { ballPt = null; phase = 'ball'; updateUI(); redraw(); });
 btnReset.addEventListener('click', () => {
-  holeCenter = holeRadPx = pxPerIn = ballPt = null;
+  holeCenter = holeRadPxRaw = holeRadPx = pxPerIn = ballPt = null;
   phase = 'hole'; updateUI(); redraw();
 });
 
-// ── UI ───────────────────────────────────────────────────
+// ── UI state ──────────────────────────────────────────────
 function updateUI() {
   const map = {
-    hole:   { eye: 'Step 1 — Find the hole', ins: 'Tap the center of the hole',  d: ['active', ''] },
-    ball:   { eye: 'Step 2 — Measure',       ins: 'Tap the center of the golf ball', d: ['done', 'active'] },
-    result: { eye: '',                        ins: '',                             d: ['done', 'done'] },
+    hole:   { eye: 'Step 1 — Find the hole', ins: 'Tap the center of the hole',     d: ['active',''] },
+    ball:   { eye: 'Step 2 — Measure',       ins: 'Tap the center of the golf ball', d: ['done','active'] },
+    result: { eye: '',                        ins: '',                                d: ['done','done'] },
   };
   const s = map[phase];
   eyebrow.textContent = s.eye;
@@ -394,17 +400,10 @@ function updateUI() {
     if (s.d[i] === 'active') d.classList.add('active');
     if (s.d[i] === 'done')   d.classList.add('done');
   });
-  if (phase === 'result') {
-    infoPane.style.display = 'none';
-    resPane.classList.add('show');
-    sizePane.classList.add('hidden');
-    btnReset.classList.remove('hidden');
-  } else {
-    infoPane.style.display = '';
-    resPane.classList.remove('show');
-    sizePane.classList.toggle('hidden', phase !== 'ball');
-    btnReset.classList.toggle('hidden', phase === 'hole');
-  }
+  infoPane.style.display  = phase === 'result' ? 'none' : '';
+  sizePane.classList.toggle('hidden', phase !== 'ball');
+  resPane.classList.toggle('show',    phase === 'result');
+  btnReset.classList.toggle('hidden', phase === 'hole');
 }
 
 updateUI();
