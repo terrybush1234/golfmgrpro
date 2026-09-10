@@ -63,7 +63,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #status-dot.searching { background: #e8a020; animation: pulse 1s ease-in-out infinite; }
 #status-dot.locked    { background: #72d472; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-#status-text { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; }
+#status-text { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #7a9a7a; }
 
 #distance-row { display: flex; align-items: baseline; gap: 10px; }
 #distance { font-size: 64px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
@@ -71,7 +71,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #verdict.good { color: #72d472; }
 #verdict.bad  { color: #e06060; }
 #verdict.none { color: #4a6a4a; }
-#tips { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: #4a6a4a; line-height: 1.3; }
+#tips { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #4a6a4a; line-height: 1.3; }
 </style>
 
 <div id="cam-wrap">
@@ -80,7 +80,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   <button id="dbg-btn">DEBUG</button>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Point camera at the hole and ball. Distance appears automatically.</p>
+    <p>Keep the hole on the LEFT and ball on the RIGHT. Distance locks in automatically.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -92,7 +92,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 <div id="panel">
   <div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#7a9a7a;margin-bottom:6px;">Gimme distance</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#7a9a7a;margin-bottom:6px;">Gimme distance</div>
     <div id="gimme-row">
       <button class="gimme-btn" data-in="12">12"</button>
       <button class="gimme-btn" data-in="18">18"</button>
@@ -111,7 +111,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   <div style="display:flex;gap:8px;align-items:center;">
     <button id="cal-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:8px 16px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Calibrate</button>
     <button id="reset-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:8px 16px;cursor:pointer;flex-shrink:0;display:none;-webkit-tap-highlight-color:transparent;">Measure Again</button>
-    <div id="tips" style="flex:1;">Point at background, tap Calibrate, then aim at hole + ball</div>
+    <div id="tips" style="flex:1;">Calibrate background first. Keep HOLE LEFT, BALL RIGHT</div>
   </div>
 </div>
 
@@ -340,16 +340,15 @@ function analyze() {
   let hole = null, ball = null;
 
   if (clusters.length === 2) {
-    const [a, b2] = clusters[0].rad >= clusters[1].rad ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
-    const ratio = a.rad / b2.rad;
-    // Size lock: ball must be 25–70% of hole radius (1.68/4.25 = 0.40 ideal).
-    // Rejects same-size objects (two shoes, two balls, etc.)
-    if (ratio >= 1.4 && ratio <= 4.0) {
-      hole = { x: a.cx*sx2,  y: a.cy*sy2,  r: Math.max(10, a.rad*sc) };
-      ball = { x: b2.cx*sx2, y: b2.cy*sy2, r: Math.max(6,  b2.rad*sc) };
+    // Assign by position: hole is always the LEFT object, ball is always RIGHT.
+    // User positions camera so hole is on the left side of the frame.
+    const [left, right] = clusters[0].cx <= clusters[1].cx ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
+    // Still require left object is larger (hole > ball) to reject two same-size objects
+    if (left.rad >= right.rad * 0.8) { // hole should be >= ball size
+      hole = { x: left.cx*sx2,  y: left.cy*sy2,  r: Math.max(10, left.rad*sc) };
+      ball = { x: right.cx*sx2, y: right.cy*sy2, r: Math.max(6,  right.rad*sc) };
     } else {
-      // Ratio wrong — only commit to hole (larger), ignore other object
-      hole = { x: a.cx*sx2, y: a.cy*sy2, r: Math.max(10, a.rad*sc) };
+      hole = { x: left.cx*sx2, y: left.cy*sy2, r: Math.max(10, left.rad*sc) };
     }
   } else if (clusters.length === 1) {
     const c = clusters[0];
