@@ -13,7 +13,7 @@ body {
 }
 #cam-wrap { position: relative; flex: 1; min-height: 0; background: #000; overflow: hidden; }
 video { width: 100%; height: 100%; object-fit: cover; display: block; }
-#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 
 #cam-start {
   display: flex; position: absolute; inset: 0;
@@ -34,17 +34,8 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
 #cam-denied button { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 12px 28px; cursor: pointer; }
 
-/* Tap hint pulse ring */
-@keyframes tapPulse {
-  0%   { transform: translate(-50%,-50%) scale(0.6); opacity: 0.9; }
-  100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
-}
-.tap-pulse {
-  position: absolute; width: 56px; height: 56px; border-radius: 50%;
-  border: 3px solid #e8f54d; pointer-events: none;
-  animation: tapPulse 0.5s ease-out forwards;
-}
-.tap-pulse.ball { border-color: #72d472; }
+@keyframes snapPop { 0%{transform:translate(-50%,-50%) scale(1)} 40%{transform:translate(-50%,-50%) scale(1.18)} 100%{transform:translate(-50%,-50%) scale(1)} }
+.snap-flash { position:absolute; border-radius:50%; border:3px solid #fff; pointer-events:none; animation: snapPop 0.35s ease-out forwards; }
 
 #panel {
   background: #0e1a0e; border-top: 2px solid #1e321e;
@@ -60,7 +51,6 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   -webkit-tap-highlight-color: transparent;
 }
 .gimme-btn.active { background: #243824; color: #e8f54d; border-color: #e8f54d; }
-
 #status-text { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #7a9a7a; }
 #distance-row { display: flex; align-items: baseline; gap: 10px; }
 #distance { font-size: 64px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
@@ -82,7 +72,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Tap the <span style="color:#e8f54d">hole</span>, then tap the <span style="color:#72d472">ball</span>. The app measures the edge of each and calculates the distance.</p>
+    <p>Drag the <span style="color:#e8f54d">yellow ring</span> over the hole and the <span style="color:#72d472">green ring</span> over the ball — then <strong>tap</strong> each ring to snap it to fit.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -107,16 +97,16 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
     <div id="distance">—</div>
     <div id="verdict" class="none"></div>
   </div>
-  <div id="tips"></div>
-  <button id="reset-btn">Measure Again</button>
+  <div id="tips">Drag rings over hole and ball · tap each to snap-fit</div>
+  <button id="reset-btn">Reset Rings</button>
 </div>
 
 <script>
 const HOLE_DIA_IN = 4.25;
 
-const video   = document.getElementById('video');
-const overlay = document.getElementById('overlay');
-const ctx     = overlay.getContext('2d');
+const video     = document.getElementById('video');
+const overlay   = document.getElementById('overlay');
+const ctx       = overlay.getContext('2d');
 const statusTxt = document.getElementById('status-text');
 const distEl    = document.getElementById('distance');
 const verdEl    = document.getElementById('verdict');
@@ -124,26 +114,32 @@ const tips      = document.getElementById('tips');
 
 let gimmeIn = 24, running = false;
 
-// State: 'hole' → waiting for hole tap, 'ball' → waiting for ball tap, 'done'
-let state = 'hole';
-let hole = null; // { x, y, r }  — screen coords
-let ball = null;
+// ── Ring state ────────────────────────────────────────────────────────────
+let rings = [];  // [holeRing, ballRing]
+let snapped = [false, false]; // whether each ring has been snapped
 
-// Offscreen canvas for pixel sampling
-const W = 320, H = 240;
-const off = document.createElement('canvas');
-off.width = W; off.height = H;
-const offCtx = off.getContext('2d', { willReadFrequently: true });
-
-// ── Sync canvas size ──────────────────────────────────────────────────────
-function syncCanvas() {
-  const rect = overlay.parentElement.getBoundingClientRect();
-  overlay.width  = rect.width;
-  overlay.height = rect.height;
+function defaultRings() {
+  const W = overlay.width, H = overlay.height;
+  rings = [
+    { x: W*0.33, y: H*0.50, r: Math.round(W*0.14), color:'#e8f54d', label:'HOLE', minR:18, maxR:W*0.38 },
+    { x: W*0.67, y: H*0.50, r: Math.round(W*0.09), color:'#72d472', label:'BALL', minR:10, maxR:W*0.22 },
+  ];
+  snapped = [false, false];
 }
-window.addEventListener('resize', () => { syncCanvas(); redraw(); });
 
-// ── Video crop for object-fit:cover alignment ─────────────────────────────
+// ── Offscreen canvas ──────────────────────────────────────────────────────
+const OW = 320, OH = 240;
+const off = document.createElement('canvas');
+off.width = OW; off.height = OH;
+const offCtx = off.getContext('2d', { willReadFrequently: true });
+let offData = null; // cached after each snap
+
+function captureFrame() {
+  const { sx, sy, sw, sh } = getVideoCrop();
+  offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, OW, OH);
+  offData = offCtx.getImageData(0, 0, OW, OH).data;
+}
+
 function getVideoCrop() {
   const vW = video.videoWidth, vH = video.videoHeight;
   const dW = overlay.width,    dH = overlay.height;
@@ -155,218 +151,303 @@ function getVideoCrop() {
   return { sx, sy, sw, sh };
 }
 
-// ── Sample pixel at screen coordinate ────────────────────────────────────
-function sampleAt(screenX, screenY) {
-  const { sx, sy, sw, sh } = getVideoCrop();
-  offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
-  const px = Math.round((screenX / overlay.width)  * W);
-  const py = Math.round((screenY / overlay.height) * H);
-  const cx = Math.max(0, Math.min(W-1, px));
-  const cy = Math.max(0, Math.min(H-1, py));
-  // Average a 3×3 block for stability
-  let r=0,g=0,b=0,n=0;
-  const data = offCtx.getImageData(0, 0, W, H).data;
-  for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
-    const nx=cx+dx, ny=cy+dy;
-    if (nx<0||nx>=W||ny<0||ny>=H) continue;
-    const i=(ny*W+nx)*4;
-    r+=data[i]; g+=data[i+1]; b+=data[i+2]; n++;
-  }
-  return { r:r/n, g:g/n, b:b/n, data, W, H };
+// Screen ↔ offscreen coordinate mapping
+function toOff(sx, sy) {
+  return { ox: (sx / overlay.width) * OW, oy: (sy / overlay.height) * OH };
+}
+function toScreen(ox, oy) {
+  return { sx: (ox / OW) * overlay.width, sy: (oy / OH) * overlay.height };
 }
 
-// ── Find edge radius from tap point via color-transition rays ─────────────
-function detectRadius(screenX, screenY, minPx, maxPx) {
-  const { r:cr, g:cg, b:cb, data } = sampleAt(screenX, screenY);
-  const { sx, sy, sw, sh } = getVideoCrop();
-
-  // Map screen coords to offscreen canvas coords
-  const ox = (screenX / overlay.width)  * W;
-  const oy = (screenY / overlay.height) * H;
-
-  // Maximum ray length in offscreen-canvas pixels
-  const maxOffPx = (maxPx / overlay.width) * W;
-  const minOffPx = (minPx / overlay.width) * W;
+// ── Ray-based edge detection ──────────────────────────────────────────────
+// Returns { cx, cy, r, score } in offscreen coords.
+// score = 1/stddev of ray lengths — higher = more circular object.
+function detectAt(ox, oy, maxOffR) {
+  const cx0 = Math.round(ox), cy0 = Math.round(oy);
+  // Sample center color (3×3 average)
+  let cr=0, cg=0, cb=0, cn=0;
+  for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
+    const nx=cx0+dx, ny=cy0+dy;
+    if (nx<0||nx>=OW||ny<0||ny>=OH) continue;
+    const i=(ny*OW+nx)*4;
+    cr+=offData[i]; cg+=offData[i+1]; cb+=offData[i+2]; cn++;
+  }
+  if (!cn) return null;
+  cr/=cn; cg/=cn; cb/=cn;
 
   const RAYS = 16;
   const radii = [];
-
-  for (let i = 0; i < RAYS; i++) {
-    const angle = (i / RAYS) * Math.PI * 2;
+  for (let i=0; i<RAYS; i++) {
+    const angle = (i/RAYS)*Math.PI*2;
     const dx = Math.cos(angle), dy = Math.sin(angle);
-    let edgeDist = maxOffPx; // default to max if no edge found
-
-    for (let d = 2; d <= maxOffPx; d += 0.5) {
-      const nx = Math.round(ox + dx * d);
-      const ny = Math.round(oy + dy * d);
-      if (nx < 0 || nx >= W || ny < 0 || ny >= H) { edgeDist = d; break; }
-      const idx = (ny * W + nx) * 4;
-      const pr = data[idx], pg = data[idx+1], pb = data[idx+2];
-      const dist = Math.sqrt((pr-cr)**2 + (pg-cg)**2 + (pb-cb)**2);
-      if (dist > 45) { edgeDist = d; break; }
+    let edgeD = maxOffR;
+    for (let d=2; d<=maxOffR; d+=0.5) {
+      const nx = Math.round(ox + dx*d), ny = Math.round(oy + dy*d);
+      if (nx<0||nx>=OW||ny<0||ny>=OH) { edgeD=d; break; }
+      const idx=(ny*OW+nx)*4;
+      const pr=offData[idx], pg=offData[idx+1], pb=offData[idx+2];
+      const dist = Math.sqrt((pr-cr)**2+(pg-cg)**2+(pb-cb)**2);
+      if (dist > 42) { edgeD=d; break; }
     }
-    radii.push(edgeDist);
+    radii.push(edgeD);
   }
 
-  // Median of ray lengths → robust against outlier rays
-  radii.sort((a,b) => a-b);
-  const medOff = radii[Math.floor(RAYS / 2)];
+  // Median radius (robust against one or two bad rays)
+  const sorted = [...radii].sort((a,b)=>a-b);
+  const medR = sorted[Math.floor(RAYS/2)];
 
-  // Convert offscreen-canvas pixels back to screen pixels
-  const screenRad = (medOff / W) * overlay.width;
-  return Math.max(minPx, Math.min(maxPx, screenRad));
+  // Score: how consistent are the radii? Lower variance = rounder = better
+  const mean = radii.reduce((s,v)=>s+v,0)/RAYS;
+  const variance = radii.reduce((s,v)=>s+(v-mean)**2,0)/RAYS;
+  const score = medR > 2 ? 1/(1+variance) : 0;
+
+  return { cx: ox, cy: oy, r: medR, score };
 }
 
-// ── Tap handling ──────────────────────────────────────────────────────────
-let tapMoved = false, tapStartX = 0, tapStartY = 0;
+// Search a grid of candidates around a center to find the roundest object nearby
+function snapRing(ringIdx) {
+  captureFrame();
+  const ring = rings[ringIdx];
+  const { ox: cx0, oy: cy0 } = toOff(ring.x, ring.y);
 
-overlay.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  tapStartX = t.clientX; tapStartY = t.clientY; tapMoved = false;
-}, { passive: false });
+  // Search radius in offscreen pixels — larger for ball since it's harder to center on
+  const searchOff = ringIdx === 1 ? Math.round((ring.r / overlay.width) * OW * 1.8)
+                                  : Math.round((ring.r / overlay.width) * OW * 0.8);
+  const maxDetR   = ringIdx === 0
+    ? (rings[0].maxR / overlay.width) * OW
+    : (rings[1].maxR / overlay.width) * OW;
 
-overlay.addEventListener('touchmove', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  if (Math.hypot(t.clientX - tapStartX, t.clientY - tapStartY) > 10) tapMoved = true;
-}, { passive: false });
+  // Grid of candidate centers
+  const STEP = Math.max(2, Math.round(searchOff / 4));
+  let best = null;
 
-overlay.addEventListener('touchend', e => {
-  e.preventDefault();
-  if (tapMoved) return;
-  const t = e.changedTouches[0];
-  handleTap(t.clientX, t.clientY);
-}, { passive: false });
-
-// Desktop mouse support
-overlay.addEventListener('click', e => {
-  handleTap(e.clientX, e.clientY);
-});
-
-function handleTap(x, y) {
-  if (!running || state === 'done') return;
-
-  // Pulse animation
-  const pulse = document.createElement('div');
-  pulse.className = 'tap-pulse' + (state === 'ball' ? ' ball' : '');
-  pulse.style.left = x + 'px'; pulse.style.top = y + 'px';
-  overlay.parentElement.appendChild(pulse);
-  setTimeout(() => pulse.remove(), 520);
-
-  if (state === 'hole') {
-    const r = detectRadius(x, y, 16, overlay.width * 0.30);
-    hole = { x, y, r };
-    state = 'ball';
-    statusTxt.textContent = 'Now tap the ball';
-    tips.textContent = '';
-
-  } else if (state === 'ball') {
-    const r = detectRadius(x, y, 8, overlay.width * 0.18);
-    ball = { x, y, r };
-    state = 'done';
-    showResult();
+  for (let dy = -searchOff; dy <= searchOff; dy += STEP) {
+    for (let dx = -searchOff; dx <= searchOff; dx += STEP) {
+      if (Math.hypot(dx, dy) > searchOff) continue;
+      const ox = cx0 + dx, oy = cy0 + dy;
+      if (ox<0||ox>=OW||oy<0||oy>=OH) continue;
+      const result = detectAt(ox, oy, maxDetR);
+      if (!result) continue;
+      if (!best || result.score > best.score) best = result;
+    }
   }
 
+  if (!best || best.r < 2) return;
+
+  // Convert best result back to screen coords
+  const { sx, sy } = toScreen(best.cx, best.cy);
+  const screenR = (best.r / OW) * overlay.width;
+
+  ring.x = sx;
+  ring.y = sy;
+  ring.r = Math.max(ring.minR, Math.min(ring.maxR, screenR));
+  snapped[ringIdx] = true;
+
+  // Flash
+  const flash = document.createElement('div');
+  flash.className = 'snap-flash';
+  flash.style.left = sx+'px'; flash.style.top = sy+'px';
+  flash.style.width = flash.style.height = (ring.r*2+10)+'px';
+  flash.style.borderColor = ring.color;
+  overlay.parentElement.appendChild(flash);
+  setTimeout(()=>flash.remove(), 370);
+
+  updateDistance();
   redraw();
 }
 
-// ── Show result ───────────────────────────────────────────────────────────
-function showResult() {
-  const pxPerIn = (hole.r * 2) / HOLE_DIA_IN;
-  const centerPx = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-  // Edge-to-edge: subtract hole radius and ball radius from center-to-center
-  const edgePx  = Math.max(0, centerPx - hole.r - ball.r);
+// ── Distance ──────────────────────────────────────────────────────────────
+function updateDistance() {
+  if (!running) return;
+  const [h, b] = rings;
+  const pxPerIn  = (h.r * 2) / HOLE_DIA_IN;
+  const centerPx = Math.hypot(b.x - h.x, b.y - h.y);
+  const edgePx   = Math.max(0, centerPx - h.r - b.r);
   const inches   = edgePx / pxPerIn;
+
   distEl.textContent = inches.toFixed(1) + ' in';
   const isGimme = inches <= gimmeIn;
-  verdEl.textContent = isGimme ? 'Gimme ✓' : 'Putt it';
+  verdEl.textContent = snapped[0] && snapped[1] ? (isGimme ? 'Gimme ✓' : 'Putt it') : '';
   verdEl.className   = isGimme ? 'good' : 'bad';
-  statusTxt.textContent = `${inches.toFixed(1)}" from hole`;
-  tips.textContent = 'Tap Measure Again to re-measure';
+  if (snapped[0] && snapped[1]) {
+    statusTxt.textContent = `${inches.toFixed(1)}" from hole`;
+    tips.textContent = 'Tap a ring to re-snap · drag to reposition';
+  }
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────
-function drawRing(obj, color, label) {
-  // Glow
-  ctx.beginPath(); ctx.arc(obj.x, obj.y, obj.r + 5, 0, Math.PI*2);
-  ctx.strokeStyle = color + '35'; ctx.lineWidth = 10; ctx.stroke();
-  // Ring
-  ctx.beginPath(); ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI*2);
-  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
-  // Crosshair
-  ctx.strokeStyle = color; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(obj.x-12, obj.y); ctx.lineTo(obj.x+12, obj.y);
-  ctx.moveTo(obj.x, obj.y-12); ctx.lineTo(obj.x, obj.y+12);
+function drawRing(ring, isSnapped) {
+  // Outer glow
+  ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r+5, 0, Math.PI*2);
+  ctx.strokeStyle = ring.color + (isSnapped ? '50' : '28');
+  ctx.lineWidth = isSnapped ? 10 : 6; ctx.stroke();
+
+  // Main ring — dashed if not yet snapped
+  ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI*2);
+  ctx.strokeStyle = ring.color;
+  ctx.lineWidth = isSnapped ? 3.5 : 2.5;
+  if (!isSnapped) ctx.setLineDash([6,4]);
   ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Crosshair
+  ctx.strokeStyle = ring.color; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ring.x-12, ring.y); ctx.lineTo(ring.x+12, ring.y);
+  ctx.moveTo(ring.x, ring.y-12); ctx.lineTo(ring.x, ring.y+12);
+  ctx.stroke();
+
   // Label
   ctx.font = 'bold 14px "DM Mono",monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const lw = ctx.measureText(label).width + 14;
-  const ly = obj.y - obj.r - 18;
+  const lw = ctx.measureText(ring.label).width + 14;
+  const ly = ring.y - ring.r - 18;
   ctx.fillStyle = 'rgba(14,26,14,0.88)';
-  ctx.beginPath(); ctx.roundRect(obj.x - lw/2, ly-12, lw, 24, 4); ctx.fill();
-  ctx.fillStyle = color; ctx.fillText(label, obj.x, ly);
+  ctx.beginPath(); ctx.roundRect(ring.x-lw/2, ly-12, lw, 24, 4); ctx.fill();
+  ctx.fillStyle = ring.color;
+  ctx.fillText(ring.label, ring.x, ly);
 }
 
 function redraw() {
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   if (!running) return;
 
-  if (hole) drawRing(hole, '#e8f54d', 'HOLE');
+  // Dashed line between centers
+  ctx.beginPath();
+  ctx.moveTo(rings[0].x, rings[0].y); ctx.lineTo(rings[1].x, rings[1].y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,5]); ctx.stroke(); ctx.setLineDash([]);
 
-  if (hole && ball) {
-    ctx.beginPath();
-    ctx.moveTo(hole.x, hole.y); ctx.lineTo(ball.x, ball.y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.40)'; ctx.lineWidth = 2;
-    ctx.setLineDash([8,5]); ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  if (ball) drawRing(ball, '#72d472', 'BALL');
-
-  // Crosshair hint when waiting for tap
-  if (state === 'hole' || state === 'ball') {
-    const col = state === 'hole' ? '#e8f54d' : '#72d472';
-    const cx = overlay.width / 2, cy = overlay.height * 0.45;
-    ctx.strokeStyle = col + '55'; ctx.lineWidth = 1.5;
-    ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.moveTo(cx-20,cy); ctx.lineTo(cx+20,cy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx,cy-20); ctx.lineTo(cx,cy+20); ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  drawRing(rings[0], snapped[0]);
+  drawRing(rings[1], snapped[1]);
 }
 
-// ── Reset ─────────────────────────────────────────────────────────────────
-function reset() {
-  state = 'hole'; hole = null; ball = null;
-  distEl.textContent = '—'; verdEl.textContent = ''; verdEl.className = 'none';
-  statusTxt.textContent = 'Tap the hole';
-  tips.textContent = 'The app detects its edge automatically';
-  redraw();
+// ── Touch handling ────────────────────────────────────────────────────────
+const activeTouches = new Map();
+const ringTouches   = [[], []];
+
+function ringAt(x, y) {
+  for (let i = rings.length-1; i >= 0; i--) {
+    if (Math.hypot(x-rings[i].x, y-rings[i].y) < rings[i].r + 32) return i;
+  }
+  return -1;
 }
 
-document.getElementById('reset-btn').addEventListener('click', reset);
+overlay.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const ri = ringAt(t.clientX, t.clientY);
+    if (ri === -1) continue;
+    activeTouches.set(t.identifier, {
+      ringIdx:ri, moved:false,
+      startX:t.clientX, startY:t.clientY,
+      baseX:rings[ri].x, baseY:rings[ri].y,
+    });
+    ringTouches[ri].push(t.identifier);
+    if (ringTouches[ri].length === 2) {
+      const [a, b] = ringTouches[ri].map(id => [...e.touches].find(x=>x.identifier===id));
+      if (a && b) { rings[ri]._pinchD = Math.hypot(b.clientX-a.clientX, b.clientY-a.clientY); rings[ri]._pinchR = rings[ri].r; }
+    }
+  }
+}, {passive:false});
 
+overlay.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const tm = new Map([...e.touches].map(t=>[t.identifier,t]));
+  for (const t of e.changedTouches) {
+    const info = activeTouches.get(t.identifier);
+    if (!info) continue;
+    const ri = info.ringIdx, ring = rings[ri];
+    if (Math.hypot(t.clientX-info.startX, t.clientY-info.startY) > 8) info.moved = true;
+    if (ringTouches[ri].length === 2) {
+      const [a, b] = ringTouches[ri].map(id=>tm.get(id));
+      if (a && b && ring._pinchD) {
+        const d = Math.hypot(b.clientX-a.clientX, b.clientY-a.clientY);
+        ring.r = Math.max(ring.minR, Math.min(ring.maxR, ring._pinchR*(d/ring._pinchD)));
+        ring.x = (a.clientX+b.clientX)/2; ring.y = (a.clientY+b.clientY)/2;
+        snapped[ri] = false;
+      }
+    } else if (info.moved) {
+      ring.x = info.baseX + (t.clientX - info.startX);
+      ring.y = info.baseY + (t.clientY - info.startY);
+      snapped[ri] = false;
+    }
+  }
+  updateDistance(); redraw();
+}, {passive:false});
+
+overlay.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const info = activeTouches.get(t.identifier);
+    if (info) {
+      if (!info.moved) snapRing(info.ringIdx); // tap → snap
+      const ri = info.ringIdx;
+      ringTouches[ri] = ringTouches[ri].filter(id=>id!==t.identifier);
+      if (ringTouches[ri].length < 2) { delete rings[ri]._pinchD; delete rings[ri]._pinchR; }
+      if (ringTouches[ri].length === 1) {
+        const rem = activeTouches.get(ringTouches[ri][0]);
+        const rt  = [...e.touches].find(x=>x.identifier===ringTouches[ri][0]);
+        if (rem && rt) { rem.startX=rt.clientX; rem.startY=rt.clientY; rem.baseX=rings[ri].x; rem.baseY=rings[ri].y; }
+      }
+      activeTouches.delete(t.identifier);
+    }
+  }
+  updateDistance(); redraw();
+}, {passive:false});
+
+// Desktop mouse support
+let mouseDown = false, mouseRing = -1, mouseMoved = false;
+let mouseStartX=0, mouseStartY=0, mouseBaseX=0, mouseBaseY=0;
+overlay.addEventListener('mousedown', e => {
+  mouseRing = ringAt(e.clientX, e.clientY);
+  if (mouseRing === -1) return;
+  mouseDown=true; mouseMoved=false;
+  mouseStartX=e.clientX; mouseStartY=e.clientY;
+  mouseBaseX=rings[mouseRing].x; mouseBaseY=rings[mouseRing].y;
+});
+overlay.addEventListener('mousemove', e => {
+  if (!mouseDown || mouseRing===-1) return;
+  if (Math.hypot(e.clientX-mouseStartX, e.clientY-mouseStartY)>6) mouseMoved=true;
+  if (mouseMoved) { rings[mouseRing].x=mouseBaseX+(e.clientX-mouseStartX); rings[mouseRing].y=mouseBaseY+(e.clientY-mouseStartY); snapped[mouseRing]=false; updateDistance(); redraw(); }
+});
+overlay.addEventListener('mouseup', e => {
+  if (mouseDown && mouseRing!==-1 && !mouseMoved) snapRing(mouseRing);
+  mouseDown=false; mouseRing=-1;
+});
+
+// ── Gimme buttons ─────────────────────────────────────────────────────────
 document.querySelectorAll('.gimme-btn').forEach(b => {
   b.addEventListener('click', () => {
-    document.querySelectorAll('.gimme-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    gimmeIn = parseInt(b.dataset.in);
-    if (state === 'done') showResult();
-    redraw();
+    document.querySelectorAll('.gimme-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); gimmeIn=parseInt(b.dataset.in);
+    updateDistance(); redraw();
   });
 });
 
+document.getElementById('reset-btn').addEventListener('click', () => {
+  defaultRings();
+  distEl.textContent='—'; verdEl.textContent=''; verdEl.className='none';
+  statusTxt.textContent='Drag rings · tap to snap';
+  tips.textContent='Drag rings over hole and ball · tap each to snap-fit';
+  redraw();
+});
+
+// ── Startup ───────────────────────────────────────────────────────────────
+function syncCanvas() {
+  const r = overlay.parentElement.getBoundingClientRect();
+  overlay.width=r.width; overlay.height=r.height;
+}
+window.addEventListener('resize', () => { syncCanvas(); defaultRings(); redraw(); });
+
 document.getElementById('btn-start').addEventListener('click', async () => {
-  document.getElementById('cam-start').style.display = 'none';
+  document.getElementById('cam-start').style.display='none';
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
-    });
-    video.srcObject = stream;
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1280} } });
+    video.srcObject=stream;
     video.addEventListener('loadedmetadata', () => {
-      syncCanvas(); running = true; reset();
+      syncCanvas(); running=true; defaultRings();
+      statusTxt.textContent='Drag rings · tap to snap'; redraw();
     });
   } catch { document.getElementById('cam-denied').classList.add('show'); }
 });
