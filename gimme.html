@@ -9,10 +9,11 @@ body {
   background: #0e1a0e; color: #dff0df;
   font-family: 'DM Mono', monospace;
   display: flex; flex-direction: column;
+  user-select: none; -webkit-user-select: none;
 }
 #cam-wrap { position: relative; flex: 1; min-height: 0; background: #000; overflow: hidden; }
 video { width: 100%; height: 100%; object-fit: cover; display: block; }
-#overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 
 #cam-start {
   display: flex; position: absolute; inset: 0;
@@ -20,9 +21,9 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   gap: 20px; background: #0e1a0e; padding: 32px; text-align: center;
 }
 #cam-start h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 700; }
-#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
+#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #7a9a7a; max-width: 300px; line-height: 1.5; }
 #cam-start button {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700;
   letter-spacing: 0.07em; text-transform: uppercase;
   background: #e8f54d; color: #0e1a0e;
   border: none; border-radius: 8px; padding: 16px 40px; cursor: pointer;
@@ -32,16 +33,6 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 600; }
 #cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
 #cam-denied button { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 12px 28px; cursor: pointer; }
-
-/* Debug toggle button */
-#dbg-btn {
-  position: absolute; top: 8px; right: 8px; z-index: 10;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700;
-  background: rgba(14,26,14,0.75); color: #7a9a7a;
-  border: 1px solid #2c422c; border-radius: 5px; padding: 5px 10px;
-  cursor: pointer; display: none; -webkit-tap-highlight-color: transparent;
-}
-#dbg-btn.on { color: #e8f54d; border-color: #e8f54d; }
 
 #panel {
   background: #0e1a0e; border-top: 2px solid #1e321e;
@@ -60,27 +51,32 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 #status-row { display: flex; align-items: center; gap: 10px; }
 #status-dot { width: 12px; height: 12px; border-radius: 50%; background: #4a6a4a; flex-shrink: 0; }
-#status-dot.searching { background: #e8a020; animation: pulse 1s ease-in-out infinite; }
-#status-dot.locked    { background: #72d472; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+#status-dot.active { background: #72d472; }
 #status-text { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #7a9a7a; }
 
 #distance-row { display: flex; align-items: baseline; gap: 10px; }
 #distance { font-size: 64px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
-#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 #verdict.good { color: #72d472; }
 #verdict.bad  { color: #e06060; }
 #verdict.none { color: #4a6a4a; }
+
 #tips { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #4a6a4a; line-height: 1.3; }
+
+#reset-btn {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
+  background: #1c2e1c; color: #7a9a7a; border: 2px solid #2c422c;
+  border-radius: 6px; padding: 10px 0; cursor: pointer; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
 </style>
 
 <div id="cam-wrap">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
-  <button id="dbg-btn">DEBUG</button>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Keep the hole on the LEFT and ball on the RIGHT. Distance locks in automatically.</p>
+    <p>Drag the <span style="color:#e8f54d">yellow ring</span> over the hole and the <span style="color:#72d472">green ring</span> over the ball. Pinch each ring to resize it to fit.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -108,102 +104,242 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
     <div id="distance">—</div>
     <div id="verdict" class="none"></div>
   </div>
-  <div id="tips">Keep HOLE LEFT, BALL RIGHT. Calibrate only if not on grass.</div>
-  <div style="display:flex;gap:8px;">
-    <button id="cal-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:10px 0;cursor:pointer;flex:1;-webkit-tap-highlight-color:transparent;">Calibrate</button>
-    <button id="reset-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:10px 0;cursor:pointer;flex:1;-webkit-tap-highlight-color:transparent;">Measure Again</button>
-  </div>
+  <div id="tips">Drag yellow ring over hole · green ring over ball · pinch to resize</div>
+  <button id="reset-btn">Reset Rings</button>
 </div>
 
 <script>
-// ── Known sizes ───────────────────────────────────────────
 const HOLE_DIA_IN = 4.25;
-const BALL_DIA_IN = 1.68;
-// Hole is ~2.53× the diameter of a ball.
-// We use this ratio to tell them apart when both appear as bright circles.
-const SIZE_RATIO  = HOLE_DIA_IN / BALL_DIA_IN; // ~2.53
 
-const video      = document.getElementById('video');
-const overlay    = document.getElementById('overlay');
-const ctx        = overlay.getContext('2d');
-const statusDot  = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
-const distEl     = document.getElementById('distance');
-const verdEl     = document.getElementById('verdict');
-const tips       = document.getElementById('tips');
-const dbgBtn     = document.getElementById('dbg-btn');
+const video     = document.getElementById('video');
+const overlay   = document.getElementById('overlay');
+const ctx       = overlay.getContext('2d');
+const statusDot = document.getElementById('status-dot');
+const statusTxt = document.getElementById('status-text');
+const distEl    = document.getElementById('distance');
+const verdEl    = document.getElementById('verdict');
+const tips      = document.getElementById('tips');
 
-let gimmeIn = 24, running = false, showDebug = false;
-let bgR = 70, bgG = 110, bgB = 50, bgCalibrated = false;
+let gimmeIn = 24;
+let running = false;
 
-// Lock state
-let locked = false;
-let lockedHole = null, lockedBall = null, lockedInches = 0;
-let confirmCount = 0;
-const CONFIRM_FRAMES = 3;
-let lastHole = null, lastBall = null;
+// ── Ring state ────────────────────────────────────────────────────────────
+// Each ring: { x, y, r, color, label, minR, maxR }
+let rings = [];
 
-// Smoothed display positions (exponential moving average)
-const SMOOTH = 0.25; // lower = smoother but slower
-let smHole = null, smBall = null;
-function smoothPt(sm, det) {
-  if (!sm || !det) return det ? {...det} : null;
-  return {
-    x: sm.x*(1-SMOOTH) + det.x*SMOOTH,
-    y: sm.y*(1-SMOOTH) + det.y*SMOOTH,
-    r: sm.r*(1-SMOOTH) + det.r*SMOOTH
-  };
+function defaultRings() {
+  const W = overlay.width || window.innerWidth;
+  const H = overlay.height || (window.innerHeight * 0.6);
+  const holeR  = Math.round(W * 0.14);
+  const ballR  = Math.round(W * 0.07);
+  rings = [
+    { x: W * 0.33, y: H * 0.5, r: holeR, color: '#e8f54d', label: 'HOLE', minR: 20, maxR: W * 0.40 },
+    { x: W * 0.67, y: H * 0.5, r: ballR, color: '#72d472', label: 'BALL', minR: 12, maxR: W * 0.25 },
+  ];
 }
 
-const W = 160, H = 120;
-const off = document.createElement('canvas');
-off.width = W; off.height = H;
-const offCtx = off.getContext('2d', { willReadFrequently: true });
+// ── Touch tracking ────────────────────────────────────────────────────────
+// Each active touch: { id, ringIdx, startX, startY, startRingX, startRingY }
+const activeTouches = new Map(); // touchId → { ringIdx, startX, startY, startRingX, startRingY }
+// For pinch: track pairs per ring
+const ringTouches = [[], []]; // ringTouches[ringIdx] = [touchId, ...]
 
-// Debug pixel canvas
-const dbgCv = document.createElement('canvas');
-dbgCv.width = W; dbgCv.height = H;
-const dbgCtx = dbgCv.getContext('2d');
+function ringAt(x, y) {
+  // Return ring index if touch is within the ring's hit area (within r + 28px slop)
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const d = Math.hypot(x - rings[i].x, y - rings[i].y);
+    if (d < rings[i].r + 28) return i;
+  }
+  return -1;
+}
 
+overlay.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const ri = ringAt(t.clientX, t.clientY);
+    if (ri === -1) continue;
+    activeTouches.set(t.identifier, {
+      ringIdx: ri,
+      startX: t.clientX, startY: t.clientY,
+      startRingX: rings[ri].x, startRingY: rings[ri].y,
+    });
+    ringTouches[ri].push(t.identifier);
+    // Record pinch baseline if this is the second finger on this ring
+    if (ringTouches[ri].length === 2) {
+      const [id0, id1] = ringTouches[ri];
+      const t0 = [...e.touches].find(x => x.identifier === id0);
+      const t1 = [...e.touches].find(x => x.identifier === id1);
+      if (t0 && t1) {
+        rings[ri]._pinchBaseDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        rings[ri]._pinchBaseR = rings[ri].r;
+      }
+    }
+  }
+}, { passive: false });
+
+overlay.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const touchMap = new Map([...e.touches].map(t => [t.identifier, t]));
+
+  for (const t of e.changedTouches) {
+    const info = activeTouches.get(t.identifier);
+    if (!info) continue;
+    const ri = info.ringIdx;
+    const rts = ringTouches[ri];
+
+    if (rts.length === 2) {
+      // Pinch — resize ring
+      const [id0, id1] = rts;
+      const t0 = touchMap.get(id0), t1 = touchMap.get(id1);
+      if (t0 && t1 && rings[ri]._pinchBaseDist) {
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const scale = dist / rings[ri]._pinchBaseDist;
+        rings[ri].r = Math.max(rings[ri].minR, Math.min(rings[ri].maxR, rings[ri]._pinchBaseR * scale));
+        // Also move ring to midpoint of the two fingers
+        rings[ri].x = (t0.clientX + t1.clientX) / 2;
+        rings[ri].y = (t0.clientY + t1.clientY) / 2;
+      }
+    } else {
+      // Drag
+      rings[ri].x = info.startRingX + (t.clientX - info.startX);
+      rings[ri].y = info.startRingY + (t.clientY - info.startY);
+    }
+  }
+  updateDistance();
+  drawRings();
+}, { passive: false });
+
+overlay.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const info = activeTouches.get(t.identifier);
+    if (info) {
+      const ri = info.ringIdx;
+      ringTouches[ri] = ringTouches[ri].filter(id => id !== t.identifier);
+      if (ringTouches[ri].length < 2) {
+        delete rings[ri]._pinchBaseDist;
+        delete rings[ri]._pinchBaseR;
+        // If one finger remains, reset its drag baseline
+        if (ringTouches[ri].length === 1) {
+          const remainId = ringTouches[ri][0];
+          const remainTouch = [...e.touches].find(x => x.identifier === remainId);
+          const remainInfo = activeTouches.get(remainId);
+          if (remainTouch && remainInfo) {
+            remainInfo.startX = remainTouch.clientX;
+            remainInfo.startY = remainTouch.clientY;
+            remainInfo.startRingX = rings[ri].x;
+            remainInfo.startRingY = rings[ri].y;
+          }
+        }
+      }
+      activeTouches.delete(t.identifier);
+    }
+  }
+  updateDistance();
+  drawRings();
+}, { passive: false });
+
+// ── Distance calculation ──────────────────────────────────────────────────
+function updateDistance() {
+  if (!running) return;
+  const hole = rings[0], ball = rings[1];
+  // pxPerInch based on hole ring diameter = HOLE_DIA_IN
+  const pxPerIn = (hole.r * 2) / HOLE_DIA_IN;
+  const distPx  = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+  const inches   = distPx / pxPerIn;
+
+  distEl.textContent = inches.toFixed(1) + ' in';
+  const isGimme = inches <= gimmeIn;
+  verdEl.textContent = isGimme ? 'Gimme ✓' : 'Putt it';
+  verdEl.className   = isGimme ? 'good' : 'bad';
+  statusDot.className = 'active';
+  statusTxt.textContent = `Hole ↔ Ball: ${inches.toFixed(1)}"`;
+  tips.style.display = 'none';
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────
+function drawRings() {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  if (!running) return;
+
+  const hole = rings[0], ball = rings[1];
+
+  // Dashed line between centers
+  ctx.beginPath();
+  ctx.moveTo(hole.x, hole.y);
+  ctx.lineTo(ball.x, ball.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (const ring of rings) {
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, ring.r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = ring.color + '40';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    // Main ring
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+    ctx.strokeStyle = ring.color;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Center crosshair
+    ctx.strokeStyle = ring.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ring.x - 10, ring.y); ctx.lineTo(ring.x + 10, ring.y);
+    ctx.moveTo(ring.x, ring.y - 10); ctx.lineTo(ring.x, ring.y + 10);
+    ctx.stroke();
+
+    // Label badge
+    ctx.font = 'bold 14px "DM Mono",monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lw = ctx.measureText(ring.label).width + 14;
+    const lx = ring.x, ly = ring.y - ring.r - 18;
+    ctx.fillStyle = 'rgba(14,26,14,0.85)';
+    ctx.beginPath(); ctx.roundRect(lx - lw/2, ly - 12, lw, 24, 4); ctx.fill();
+    ctx.fillStyle = ring.color;
+    ctx.fillText(ring.label, lx, ly);
+  }
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.gimme-btn').forEach(b => {
   b.addEventListener('click', () => {
     document.querySelectorAll('.gimme-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     gimmeIn = parseInt(b.dataset.in);
+    updateDistance();
   });
 });
 
 document.getElementById('reset-btn').addEventListener('click', () => {
-  locked=false; lockedHole=null; lockedBall=null; confirmCount=0; lastHole=null; lastBall=null;
-  distEl.textContent='—'; verdEl.textContent=''; verdEl.className='none';
-  statusDot.className='searching'; statusText.textContent='Looking for hole and ball…';
-  tips.style.display='';
+  defaultRings();
+  distEl.textContent = '—';
+  verdEl.textContent = ''; verdEl.className = 'none';
+  statusDot.className = '';
+  statusTxt.textContent = 'Drag rings to measure';
+  tips.style.display = '';
+  drawRings();
 });
 
-document.getElementById('cal-btn').addEventListener('click', () => {
-  if (!running || !video.videoWidth) return;
-  // Sample the center region of the frame as background color
-  const { sx, sy, sw, sh } = getVideoCrop();
-  offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
-  const data = offCtx.getImageData(0, 0, W, H).data;
-  // Average the middle 50% of the frame (avoids edges where hole/ball might be)
-  const x0=Math.floor(W*0.25), x1=Math.floor(W*0.75);
-  const y0=Math.floor(H*0.25), y1=Math.floor(H*0.50); // upper-mid only (scan zone)
-  let sr=0,sg=0,sb=0,sn=0;
-  for (let y=y0; y<y1; y++) for (let x=x0; x<x1; x++) {
-    const i=(y*W+x)*4; sr+=data[i]; sg+=data[i+1]; sb+=data[i+2]; sn++;
-  }
-  bgR=sr/sn; bgG=sg/sn; bgB=sb/sn; bgCalibrated=true;
-  const btn = document.getElementById('cal-btn');
-  btn.textContent='✓ Set'; btn.style.color='#72d472'; btn.style.borderColor='#72d472';
-  setTimeout(()=>{ btn.textContent='Calibrate'; btn.style.color=''; btn.style.borderColor=''; }, 1500);
+window.addEventListener('resize', () => {
+  syncCanvas();
+  defaultRings();
+  drawRings();
 });
 
-dbgBtn.addEventListener('click', () => {
-  showDebug = !showDebug;
-  dbgBtn.classList.toggle('on', showDebug);
-  dbgBtn.textContent = showDebug ? 'DEBUG ON' : 'DEBUG';
-});
+function syncCanvas() {
+  const r = overlay.parentElement.getBoundingClientRect();
+  overlay.width = r.width;
+  overlay.height = r.height;
+}
 
 document.getElementById('btn-start').addEventListener('click', async () => {
   document.getElementById('cam-start').style.display = 'none';
@@ -213,305 +349,13 @@ document.getElementById('btn-start').addEventListener('click', async () => {
     });
     video.srcObject = stream;
     video.addEventListener('loadedmetadata', () => {
-      syncCanvas(); running = true; dbgBtn.style.display = 'block'; loop();
+      syncCanvas();
+      running = true;
+      defaultRings();
+      statusDot.className = '';
+      statusTxt.textContent = 'Drag rings to measure';
+      drawRings();
     });
   } catch { document.getElementById('cam-denied').classList.add('show'); }
 });
-
-window.addEventListener('resize', syncCanvas);
-function syncCanvas() {
-  const r = overlay.parentElement.getBoundingClientRect();
-  overlay.width = r.width; overlay.height = r.height;
-}
-
-// ── Cluster pixels: prune outliers, check circularity, return centroid ────
-function clusterPx(pixels, minCount, minRad, maxRadFrac) {
-  if (pixels.length < minCount) return null;
-  let sx=0, sy=0;
-  for (const [x,y] of pixels) { sx+=x; sy+=y; }
-  let cx=sx/pixels.length, cy=sy/pixels.length, pts=pixels;
-  for (let i=0; i<2; i++) {
-    const re = Math.sqrt(pts.length / Math.PI);
-    pts = pts.filter(([x,y]) => Math.hypot(x-cx,y-cy) < re*2.5);
-    if (pts.length < minCount) return null;
-    sx=0; sy=0; for (const [x,y] of pts) { sx+=x; sy+=y; }
-    cx=sx/pts.length; cy=sy/pts.length;
-  }
-  const rad = Math.sqrt(pts.length / Math.PI);
-  if (rad < minRad || rad > W * maxRadFrac) return null;
-
-  // Fill density: real circles fill their area. Shoes/irregular blobs don't.
-  const area = Math.PI * rad * rad;
-  const density = pts.length / area;
-  if (density < 0.20) return null; // was 0.30 — relaxed for real-world lighting
-
-  // Bounding box aspect ratio: reject elongated shapes
-  let minX=W,maxX=0,minY=H,maxY=0;
-  for (const [x,y] of pts) {
-    if (x<minX) minX=x; if (x>maxX) maxX=x;
-    if (y<minY) minY=y; if (y>maxY) maxY=y;
-  }
-  const bw=maxX-minX+1, bh=maxY-minY+1;
-  if (Math.min(bw,bh)/Math.max(bw,bh) < 0.40) return null;
-
-  return { cx, cy, rad, n: pts.length };
-}
-
-// ── Match object-fit:cover crop so canvas coords align with visible video ──
-function getVideoCrop() {
-  const vW = video.videoWidth, vH = video.videoHeight;
-  const dW = overlay.width,    dH = overlay.height;
-  if (!vW || !dW) return { sx:0, sy:0, sw:vW, sh:vH };
-  const vAR = vW/vH, dAR = dW/dH;
-  let sx, sy, sw, sh;
-  if (vAR > dAR) { sh=vH; sw=vH*dAR; sx=(vW-sw)/2; sy=0; }
-  else           { sw=vW; sh=vW/dAR; sx=0; sy=(vH-sh)/2; }
-  return { sx, sy, sw, sh };
-}
-
-// ── Analysis ──────────────────────────────────────────────────────────────
-function analyze() {
-  const { sx, sy, sw, sh } = getVideoCrop();
-  offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
-  const data = offCtx.getImageData(0, 0, W, H).data;
-
-  const grassR = bgR, grassG = bgG, grassB = bgB;
-
-  // Only analyze the top 65% of the frame — feet are always at the bottom
-  const SCAN_H = Math.floor(H * 0.65);
-
-  // Pass 2: find non-grass pixels above shadow level (not shadow, not grass)
-  const nonGrassPx = [];
-  const dbgImg = showDebug ? dbgCtx.createImageData(W, H) : null;
-
-  for (let y=0; y<SCAN_H; y++) {
-    for (let x=0; x<W; x++) {
-      const i = (y*W+x)*4;
-      const r=data[i], g=data[i+1], b=data[i+2];
-      const luma = 0.299*r + 0.587*g + 0.114*b;
-
-      let isCandidate;
-      if (bgCalibrated) {
-        // Calibrated: find pixels that differ from the sampled background
-        const dr=r-grassR, dg=g-grassG, db=b-grassB;
-        const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
-        isCandidate = colorDist > 40 && luma > 50;
-      } else {
-        // Uncalibrated: on a golf course the hole liner and ball are the
-        // brightest non-green objects. Find bright pixels that aren't green-tinted.
-        const greenDominance = g - Math.min(r, b);
-        isCandidate = luma > 155 && greenDominance < 25;
-      }
-
-      if (isCandidate) nonGrassPx.push([x, y]);
-
-      if (showDebug && dbgImg) {
-        const di = i;
-        if (isCandidate) {
-          dbgImg.data[di]=255; dbgImg.data[di+1]=220; dbgImg.data[di+2]=0; dbgImg.data[di+3]=160;
-        } else {
-          dbgImg.data[di+3]=0;
-        }
-      }
-    }
-  }
-
-  if (showDebug && dbgImg) {
-    dbgCtx.putImageData(dbgImg, 0, 0);
-  }
-
-  const sx2 = overlay.width/W, sy2 = overlay.height/H, sc=(sx2+sy2)/2;
-
-  const clusters = findTwoClusters(nonGrassPx, gimmeIn);
-  let hole = null, ball = null;
-
-  if (clusters.length === 2) {
-    // Assign by position: hole is always the LEFT object, ball is always RIGHT.
-    // User positions camera so hole is LEFT and ball is RIGHT — never above/below.
-    const [left, right] = clusters[0].cx <= clusters[1].cx ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
-    // Require mostly horizontal alignment: vertical gap must be less than the larger radius.
-    // This rejects any pair where one object is clearly above or below the other.
-    const verticalGap = Math.abs(left.cy - right.cy);
-    const maxVert = Math.max(left.rad, right.rad) * 1.5;
-    if (verticalGap > maxVert) {
-      // One above the other — treat the larger as the hole only, ignore the other
-      const bigger = left.rad >= right.rad ? left : right;
-      hole = { x: bigger.cx*sx2, y: bigger.cy*sy2, r: Math.max(10, bigger.rad*sc) };
-    } else if (left.rad >= right.rad * 0.8) {
-      hole = { x: left.cx*sx2,  y: left.cy*sy2,  r: Math.max(10, left.rad*sc) };
-      ball = { x: right.cx*sx2, y: right.cy*sy2, r: Math.max(6,  right.rad*sc) };
-    } else {
-      hole = { x: left.cx*sx2, y: left.cy*sy2, r: Math.max(10, left.rad*sc) };
-    }
-  } else if (clusters.length === 1) {
-    const c = clusters[0];
-    hole = { x: c.cx*sx2, y: c.cy*sy2, r: Math.max(10, c.rad*sc) };
-  }
-
-  return { hole, ball };
-}
-
-// Score a cluster: higher = more circle-like (dense + compact)
-function scoreCluster(c) { return c ? c.n / (Math.PI * c.rad * c.rad) : 0; }
-
-// Find best two circular clusters by scanning spatially distinct regions
-function findTwoClusters(pixels, maxGimmeInches) {
-  if (pixels.length < 5) return [];
-
-  // Find best cluster overall (hole candidate)
-  const c1 = clusterPx(pixels, 5, 2, 0.45);
-  if (!c1) return [];
-
-  // Peel off c1 pixels generously so ball search isn't contaminated by hole edge
-  const re1 = Math.sqrt(c1.n / Math.PI);
-  const rest = pixels.filter(([x,y]) => Math.hypot(x-c1.cx,y-c1.cy) > re1*3.0);
-  if (rest.length < 4) return [c1];
-
-  // Ball must be smaller than hole — cap its max radius to just below c1's radius
-  const maxBallRadFrac = Math.min(0.35, (c1.rad * 0.85) / W);
-  const c2 = clusterPx(rest, 4, 1, maxBallRadFrac);
-  if (!c2) return [c1];
-
-  // The two clusters must be spatially separated — centers farther apart than sum of radii
-  const dist = Math.hypot(c2.cx - c1.cx, c2.cy - c1.cy);
-  if (dist < c1.rad + c2.rad) return [c1]; // overlapping = same object
-
-  // Physics constraint: ball can't be beyond the selected gimme distance.
-  const maxGimmePx = (maxGimmeInches / HOLE_DIA_IN) * (c1.rad * 2);
-  if (dist > maxGimmePx) return [c1]; // too far away to be a valid ball
-
-  return [c1, c2];
-}
-
-// ── Draw helpers ──────────────────────────────────────────────────────────
-function ring(cx, cy, r, col) {
-  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke();
-}
-function cross(cx, cy, s, col) {
-  ctx.strokeStyle=col; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(cx-s,cy); ctx.lineTo(cx+s,cy);
-  ctx.moveTo(cx,cy-s); ctx.lineTo(cx,cy+s);
-  ctx.stroke();
-}
-function dashedLine(ax,ay,bx,by) {
-  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
-  ctx.strokeStyle='#72d472'; ctx.lineWidth=2.5;
-  ctx.setLineDash([8,5]); ctx.stroke(); ctx.setLineDash([]);
-}
-function badge(txt,x,y,col) {
-  ctx.font='bold 13px "DM Mono",monospace';
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  const w=ctx.measureText(txt).width+12;
-  ctx.fillStyle='rgba(14,26,14,0.85)';
-  ctx.beginPath(); ctx.roundRect(x-w/2,y-11,w,22,3); ctx.fill();
-  ctx.fillStyle=col; ctx.fillText(txt,x,y);
-}
-
-// ── Render loop ───────────────────────────────────────────────────────────
-let frameCount=0;
-function loop() {
-  if (!running) return;
-  requestAnimationFrame(loop);
-  if (++frameCount % 3 !== 0 || !video.videoWidth) return;
-
-  ctx.clearRect(0,0,overlay.width,overlay.height);
-
-  // Draw scan zone guide (top 65% of frame)
-  const zoneH = overlay.height * 0.65;
-  ctx.strokeStyle = 'rgba(232,245,77,0.25)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6,4]);
-  ctx.strokeRect(8, 8, overlay.width-16, zoneH-16);
-  ctx.setLineDash([]);
-  // Subtle label
-  ctx.font = '11px "DM Mono",monospace';
-  ctx.fillStyle = 'rgba(232,245,77,0.35)';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('aim hole + ball here', overlay.width/2, 12);
-
-  // Draw debug pixel layer first (behind circles)
-  if (showDebug) {
-    ctx.drawImage(dbgCv, 0, 0, overlay.width, overlay.height);
-  }
-
-  const { hole, ball } = analyze();
-
-  if (hole) {
-    ring(hole.x,hole.y,hole.r,'rgba(232,245,77,0.85)');
-    cross(hole.x,hole.y,7,'#e8f54d');
-    badge('HOLE',hole.x,hole.y-hole.r-14,'#e8f54d');
-  }
-  if (ball) {
-    ring(ball.x,ball.y,ball.r,'rgba(114,212,114,0.85)');
-    cross(ball.x,ball.y,6,'#72d472');
-    badge('BALL',ball.x,ball.y-ball.r-14,'#72d472');
-  }
-
-  if (locked) {
-    // Frozen — draw saved detection, don't re-analyze
-    ring(lockedHole.x,lockedHole.y,lockedHole.r,'rgba(232,245,77,0.85)');
-    cross(lockedHole.x,lockedHole.y,7,'#e8f54d');
-    badge('HOLE',lockedHole.x,lockedHole.y-lockedHole.r-14,'#e8f54d');
-    ring(lockedBall.x,lockedBall.y,lockedBall.r,'rgba(114,212,114,0.85)');
-    cross(lockedBall.x,lockedBall.y,6,'#72d472');
-    badge('BALL',lockedBall.x,lockedBall.y-lockedBall.r-14,'#72d472');
-    dashedLine(lockedHole.x,lockedHole.y,lockedBall.x,lockedBall.y);
-    badge(lockedInches.toFixed(1)+'"',(lockedHole.x+lockedBall.x)/2,(lockedHole.y+lockedBall.y)/2-14,'#72d472');
-    return;
-  }
-
-  if (hole && ball) {
-    // Smooth positions — circles glide instead of jumping
-    smHole = smoothPt(smHole, hole);
-    smBall = smoothPt(smBall, ball);
-
-    const pxPerIn = (smHole.r*2) / HOLE_DIA_IN;
-    const inches  = Math.hypot(smBall.x-smHole.x, smBall.y-smHole.y) / pxPerIn;
-
-    // Stability check on raw (not smoothed) positions
-    const stableHole = lastHole && Math.hypot(hole.x-lastHole.x, hole.y-lastHole.y) < hole.r*0.7;
-    const stableBall = lastBall && Math.hypot(ball.x-lastBall.x, ball.y-lastBall.y) < ball.r*1.2;
-    if (stableHole && stableBall) confirmCount++;
-    else confirmCount = 0;
-    lastHole = hole; lastBall = ball;
-
-    // Draw smoothed positions
-    ring(smHole.x,smHole.y,smHole.r,'rgba(232,245,77,0.85)');
-    cross(smHole.x,smHole.y,7,'#e8f54d');
-    badge('HOLE',smHole.x,smHole.y-smHole.r-14,'#e8f54d');
-    ring(smBall.x,smBall.y,smBall.r,'rgba(114,212,114,0.85)');
-    cross(smBall.x,smBall.y,6,'#72d472');
-    badge('BALL',smBall.x,smBall.y-smBall.r-14,'#72d472');
-    dashedLine(smHole.x,smHole.y,smBall.x,smBall.y);
-    badge(inches.toFixed(1)+'"',(smHole.x+smBall.x)/2,(smHole.y+smBall.y)/2-14,'#72d472');
-
-    if (confirmCount >= CONFIRM_FRAMES) {
-      // Lock it
-      locked = true;
-      lockedHole = hole; lockedBall = ball; lockedInches = inches;
-      distEl.textContent = inches.toFixed(1)+' in';
-      verdEl.textContent = inches<=gimmeIn ? 'Gimme ✓' : 'Putt it';
-      verdEl.className   = inches<=gimmeIn ? 'good' : 'bad';
-      statusDot.className='locked';
-      statusText.textContent='Locked — tap Measure Again to re-scan';
-      tips.style.display='none';
-    } else {
-      distEl.textContent = inches.toFixed(1)+' in';
-      verdEl.textContent = inches<=gimmeIn ? 'Gimme ✓' : 'Putt it';
-      verdEl.className   = inches<=gimmeIn ? 'good' : 'bad';
-      statusDot.className='searching';
-      statusText.textContent=`Confirming… hold still`;
-      tips.style.display='none';
-    }
-  } else {
-    confirmCount=0; lastHole=null; lastBall=null;
-    distEl.textContent='—'; verdEl.textContent=''; verdEl.className='none';
-    statusDot.className='searching'; tips.style.display='';
-    if (!hole&&!ball)  statusText.textContent='Looking for hole and ball…';
-    else if (!hole)    statusText.textContent='Ball found — looking for hole…';
-    else               statusText.textContent='Hole found — looking for ball…';
-  }
-}
 </script>
