@@ -63,7 +63,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Frame the shot with the <span style="color:#e8f54d">hole on the left</span> and <span style="color:#72d472">ball on the right</span>, then press Capture.</p>
+    <p>Draw a box around the <span style="color:#e8f54d">hole</span>, then draw a box around the <span style="color:#72d472">ball</span>.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -89,7 +89,6 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
     <div id="verdict"></div>
   </div>
   <div id="tips"></div>
-  <button id="capture-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;background:#e8f54d;color:#0e1a0e;border:none;border-radius:8px;padding:14px 0;cursor:pointer;width:100%;letter-spacing:.07em;text-transform:uppercase;-webkit-tap-highlight-color:transparent;">Capture</button>
   <button id="reset-btn">Measure Again</button>
 </div>
 
@@ -106,10 +105,14 @@ const verdEl    = document.getElementById('verdict');
 const tips      = document.getElementById('tips');
 
 let gimmeIn = 24, running = false;
-let state = 'ready'; // 'ready' | 'done'
+let state = 'hole'; // 'hole' | 'ball' | 'done'
 
-// Animated ring state
-// Each ring: { x, y, r, targetX, targetY, targetR, snapped, color, label }
+// Boxes drawn by user: { x1,y1,x2,y2 } in screen coords, or null
+let holeBox = null, ballBox = null;
+// Box being drawn right now
+let drawing = null; // { startX, startY, curX, curY }
+
+// Detected rings (animated): { x,y,r,targetX,targetY,targetR,snapped,color,label }
 let rings;
 
 function syncCanvas() {
@@ -118,14 +121,10 @@ function syncCanvas() {
 }
 
 function initRings() {
-  const W = overlay.width, H = overlay.height;
-  const bigR = Math.round(W * 0.20);
-  const smlR = Math.round(W * 0.12);
+  // Rings start hidden (r=0) — they animate in after detection
   rings = [
-    { x:W*0.28, y:H*0.42, r:bigR, targetX:W*0.28, targetY:H*0.42, targetR:bigR,
-      snapped:false, color:'#e8f54d', label:'HOLE' },
-    { x:W*0.72, y:H*0.42, r:smlR, targetX:W*0.72, targetY:H*0.42, targetR:smlR,
-      snapped:false, color:'#72d472', label:'BALL' },
+    { x:0,y:0,r:0,targetX:0,targetY:0,targetR:0,snapped:false,color:'#e8f54d',label:'HOLE' },
+    { x:0,y:0,r:0,targetX:0,targetY:0,targetR:0,snapped:false,color:'#72d472',label:'BALL' },
   ];
 }
 
@@ -261,89 +260,155 @@ function showResult() {
   const centerPx=Math.hypot(bx-hx,by-hy);
   const edgePx=Math.max(0,centerPx-hr-br);
   const inches=edgePx/pxPerIn;
-
   distEl.textContent=inches.toFixed(1)+' in';
   const isGimme=inches<=gimmeIn;
   verdEl.textContent=isGimme?'Gimme ✓':'Putt it';
   verdEl.className=isGimme?'good':'bad';
   statusTxt.textContent=`${inches.toFixed(1)}" from hole`;
   tips.textContent='Press Measure Again for next putt';
-  document.getElementById('capture-btn').style.display='none';
 }
 
-// ── Draw ──────────────────────────────────────────────────────────────────
+// ── Draw box + ring ───────────────────────────────────────────────────────
+function drawBox(box, color, label) {
+  if (!box) return;
+  const {x1,y1,x2,y2}=box;
+  const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=2.5;
+  ctx.setLineDash([8,4]); ctx.strokeRect(x,y,w,h); ctx.setLineDash([]);
+  // Corner ticks
+  const t=14;
+  ctx.lineWidth=4;
+  [[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(([cx,cy,sx,sy])=>{
+    ctx.beginPath(); ctx.moveTo(cx,cy+sy*t); ctx.lineTo(cx,cy); ctx.lineTo(cx+sx*t,cy); ctx.stroke();
+  });
+  // Label
+  ctx.font='bold 15px "DM Mono",monospace';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  const lw=ctx.measureText(label).width+10;
+  ctx.fillStyle='rgba(14,26,14,.88)'; ctx.fillRect(x+4,y+4,lw,22);
+  ctx.fillStyle=color; ctx.fillText(label,x+9,y+6);
+  ctx.restore();
+}
+
 function drawRing(ring) {
-  const alpha=ring.snapped?'60':'30';
+  if (ring.r < 2) return;
   ctx.beginPath(); ctx.arc(ring.x,ring.y,ring.r+6,0,Math.PI*2);
-  ctx.strokeStyle=ring.color+alpha; ctx.lineWidth=10; ctx.stroke();
-
+  ctx.strokeStyle=ring.color+'60'; ctx.lineWidth=10; ctx.stroke();
   ctx.beginPath(); ctx.arc(ring.x,ring.y,ring.r,0,Math.PI*2);
-  ctx.strokeStyle=ring.color; ctx.lineWidth=3.5;
-  if (!ring.snapped) ctx.setLineDash([7,5]);
-  ctx.stroke(); ctx.setLineDash([]);
-
+  ctx.strokeStyle=ring.color; ctx.lineWidth=3.5; ctx.stroke();
   ctx.strokeStyle=ring.color; ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(ring.x-12,ring.y); ctx.lineTo(ring.x+12,ring.y);
   ctx.moveTo(ring.x,ring.y-12); ctx.lineTo(ring.x,ring.y+12);
   ctx.stroke();
-
-  ctx.font='bold 14px "DM Mono",monospace';
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  const lw=ctx.measureText(ring.label).width+14, ly=ring.y-ring.r-18;
-  ctx.fillStyle='rgba(14,26,14,.88)';
-  ctx.beginPath(); ctx.roundRect(ring.x-lw/2,ly-12,lw,24,4); ctx.fill();
-  ctx.fillStyle=ring.color; ctx.fillText(ring.label,ring.x,ly);
 }
 
 function redraw() {
   ctx.clearRect(0,0,overlay.width,overlay.height);
   if (!running) return;
+
+  // Dashed line between rings when both locked
   if (rings[0].snapped && rings[1].snapped) {
     ctx.beginPath(); ctx.moveTo(rings[0].x,rings[0].y); ctx.lineTo(rings[1].x,rings[1].y);
     ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Draw both guide rings
+  // Completed boxes
+  drawBox(holeBox,'#e8f54d','HOLE');
+  drawBox(ballBox,'#72d472','BALL');
+
+  // Box being drawn right now
+  if (drawing) {
+    const color = state==='hole'?'#e8f54d':'#72d472';
+    drawBox({x1:drawing.startX,y1:drawing.startY,x2:drawing.curX,y2:drawing.curY}, color,
+            state==='hole'?'HOLE':'BALL');
+  }
+
+  // Detected rings
   drawRing(rings[0]);
   drawRing(rings[1]);
-  // Dividing line guide
-  if (state==='ready') {
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
-    ctx.setLineDash([6,6]);
-    ctx.beginPath(); ctx.moveTo(overlay.width/2,0); ctx.lineTo(overlay.width/2,overlay.height);
-    ctx.stroke(); ctx.setLineDash([]); ctx.restore();
-  }
 }
 
-// ── Capture ───────────────────────────────────────────────────────────────
-function doCapture() {
-  if (!running || state==='done') return;
-  statusTxt.textContent='Detecting…';
+// ── Detect inside a box ───────────────────────────────────────────────────
+function detectInBox(box, mode, maxRadSc) {
+  const cx=(box.x1+box.x2)/2, cy=(box.y1+box.y2)/2;
+  const halfW=Math.abs(box.x2-box.x1)/2, halfH=Math.abs(box.y2-box.y1)/2;
+  const searchR=Math.min(halfW,halfH);
+  return findObject(cx,cy,searchR,maxRadSc,mode);
+}
 
-  // Scan left half for hole (darkest circle), right half for ball (brightest circle)
-  const W=overlay.width, H=overlay.height;
-  const holeFound = findObject(W*0.25, H*0.50, W*0.24, W*0.28, 'dark');
-  const ballFound  = findObject(W*0.75, H*0.50, W*0.24, W*0.20, 'bright');
+// ── Touch / mouse: draw boxes ─────────────────────────────────────────────
+function getPos(e) {
+  if (e.touches) { const t=e.touches[0]; return {x:t.clientX,y:t.clientY}; }
+  return {x:e.clientX,y:e.clientY};
+}
 
-  const hx=holeFound?holeFound.x:W*0.28, hy=holeFound?holeFound.y:H*0.42;
-  const hr=holeFound?holeFound.r:W*0.11;
-  const bx=ballFound?ballFound.x:W*0.72,  by=ballFound?ballFound.y:H*0.42;
-  const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+overlay.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  if (state==='done') return;
+  const {x,y}=getPos(e);
+  drawing={startX:x,startY:y,curX:x,curY:y};
+},{passive:false});
 
-  rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr; rings[0].snapped=true;
-  rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR; rings[1].snapped=true;
-  startAnim();
+overlay.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if (!drawing) return;
+  const {x,y}=getPos(e);
+  drawing.curX=x; drawing.curY=y;
+  redraw();
+},{passive:false});
 
-  state='done';
-  setTimeout(showResult, 350);
+overlay.addEventListener('touchend', e=>{
+  e.preventDefault(); finishDraw();
+});
+
+overlay.addEventListener('mousedown', e=>{
+  if (state==='done') return;
+  drawing={startX:e.clientX,startY:e.clientY,curX:e.clientX,curY:e.clientY};
+});
+overlay.addEventListener('mousemove', e=>{
+  if (!drawing) return;
+  drawing.curX=e.clientX; drawing.curY=e.clientY; redraw();
+});
+overlay.addEventListener('mouseup', ()=>finishDraw());
+
+function finishDraw() {
+  if (!drawing || state==='done') { drawing=null; return; }
+  const box={x1:drawing.startX,y1:drawing.startY,x2:drawing.curX,y2:drawing.curY};
+  const w=Math.abs(box.x2-box.x1), h=Math.abs(box.y2-box.y1);
+  drawing=null;
+  if (w<20||h<20) { redraw(); return; } // too small — ignore
+
+  if (state==='hole') {
+    holeBox=box;
+    const found=detectInBox(box,'dark',overlay.width*0.28);
+    const hx=found?found.x:(box.x1+box.x2)/2, hy=found?found.y:(box.y1+box.y2)/2;
+    const hr=found?found.r:overlay.width*0.10;
+    rings[0]={...rings[0],x:hx,y:hy,r:hr,targetX:hx,targetY:hy,targetR:hr,snapped:true};
+    // Pre-size ball ring from hole
+    const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+    rings[1]={...rings[1],targetR:ballR};
+    state='ball';
+    statusTxt.textContent='Now draw a box around the ball';
+    tips.textContent='Drag to surround the ball';
+
+  } else if (state==='ball') {
+    ballBox=box;
+    const holeR=rings[0].targetR;
+    const found=detectInBox(box,'bright',holeR*0.95);
+    const bx=found?found.x:(box.x1+box.x2)/2, by=found?found.y:(box.y1+box.y2)/2;
+    const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
+    rings[1]={...rings[1],x:bx,y:by,r:ballR,targetX:bx,targetY:by,targetR:ballR,snapped:true};
+    startAnim();
+    state='done';
+    setTimeout(showResult,300);
+  }
+  redraw();
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────
-document.getElementById('capture-btn').addEventListener('click', doCapture);
-
 document.querySelectorAll('.gimme-btn').forEach(b=>{
   b.addEventListener('click',()=>{
     document.querySelectorAll('.gimme-btn').forEach(x=>x.classList.remove('active'));
@@ -353,13 +418,12 @@ document.querySelectorAll('.gimme-btn').forEach(b=>{
 });
 
 function reset() {
-  state='ready';
+  state='hole'; holeBox=null; ballBox=null; drawing=null;
   if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
   initRings();
   distEl.textContent='—'; verdEl.textContent=''; verdEl.className='';
-  statusTxt.textContent='Frame hole left · ball right';
-  tips.textContent='Then press Capture';
-  document.getElementById('capture-btn').style.display='';
+  statusTxt.textContent='Draw a box around the hole';
+  tips.textContent='Drag to surround the hole';
   redraw();
 }
 
