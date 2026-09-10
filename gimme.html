@@ -336,7 +336,7 @@ function analyze() {
   const sx2 = overlay.width/W, sy2 = overlay.height/H, sc=(sx2+sy2)/2;
 
   // Find up to 2 distinct clusters by splitting non-grass pixels
-  const clusters = findTwoClusters(nonGrassPx);
+  const clusters = findTwoClusters(nonGrassPx, gimmeIn);
   let hole = null, ball = null;
 
   if (clusters.length === 2) {
@@ -363,7 +363,7 @@ function analyze() {
 function scoreCluster(c) { return c ? c.n / (Math.PI * c.rad * c.rad) : 0; }
 
 // Find best two circular clusters by scanning spatially distinct regions
-function findTwoClusters(pixels) {
+function findTwoClusters(pixels, maxGimmeInches) {
   if (pixels.length < 5) return [];
 
   // Find best cluster overall (hole candidate)
@@ -384,9 +384,8 @@ function findTwoClusters(pixels) {
   const dist = Math.hypot(c2.cx - c1.cx, c2.cy - c1.cy);
   if (dist < c1.rad + c2.rad) return [c1]; // overlapping = same object
 
-  // Physics constraint: max gimme is 36". Hole diameter = 4.25".
-  // Ball can't be more than 36/4.25 ≈ 8.5 hole-diameters away.
-  const maxGimmePx = (36 / HOLE_DIA_IN) * (c1.rad * 2);
+  // Physics constraint: ball can't be beyond the selected gimme distance.
+  const maxGimmePx = (maxGimmeInches / HOLE_DIA_IN) * (c1.rad * 2);
   if (dist > maxGimmePx) return [c1]; // too far away to be a valid ball
 
   return [c1, c2];
