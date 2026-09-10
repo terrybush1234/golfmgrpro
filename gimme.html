@@ -108,7 +108,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
     <div id="distance">—</div>
     <div id="verdict" class="none"></div>
   </div>
-  <div id="tips">Calibrate background first. Keep HOLE LEFT, BALL RIGHT</div>
+  <div id="tips">Keep HOLE LEFT, BALL RIGHT. Calibrate only if not on grass.</div>
   <div style="display:flex;gap:8px;">
     <button id="cal-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:10px 0;cursor:pointer;flex:1;-webkit-tap-highlight-color:transparent;">Calibrate</button>
     <button id="reset-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;background:#1c2e1c;color:#7a9a7a;border:2px solid #2c422c;border-radius:6px;padding:10px 0;cursor:pointer;flex:1;-webkit-tap-highlight-color:transparent;">Measure Again</button>
@@ -275,16 +275,7 @@ function analyze() {
   offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H);
   const data = offCtx.getImageData(0, 0, W, H).data;
 
-  // Use calibrated background color, or auto-sample green grass if not calibrated
-  let grassR = bgR, grassG = bgG, grassB = bgB;
-  if (!bgCalibrated) {
-    let gR=0, gG=0, gB=0, gN=0;
-    for (let i=0; i<data.length; i+=4) {
-      const r=data[i], g=data[i+1], b=data[i+2];
-      if (g > r*1.05 && g > b*1.05 && g > 30 && g < 220) { gR+=r; gG+=g; gB+=b; gN++; }
-    }
-    if (gN > 80) { grassR=gR/gN; grassG=gG/gN; grassB=gB/gN; }
-  }
+  const grassR = bgR, grassG = bgG, grassB = bgB;
 
   // Only analyze the top 65% of the frame — feet are always at the bottom
   const SCAN_H = Math.floor(H * 0.65);
@@ -298,11 +289,19 @@ function analyze() {
       const i = (y*W+x)*4;
       const r=data[i], g=data[i+1], b=data[i+2];
       const luma = 0.299*r + 0.587*g + 0.114*b;
-      const dr=r-grassR, dg=g-grassG, db=b-grassB;
-      const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
 
-      // Not grass, not a shadow (luma > 50 excludes very dark areas AND most shadows)
-      const isCandidate = colorDist > 35 && luma > 50;
+      let isCandidate;
+      if (bgCalibrated) {
+        // Calibrated: find pixels that differ from the sampled background
+        const dr=r-grassR, dg=g-grassG, db=b-grassB;
+        const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
+        isCandidate = colorDist > 40 && luma > 50;
+      } else {
+        // Uncalibrated: on a golf course the hole liner and ball are the
+        // brightest non-green objects. Find bright pixels that aren't green-tinted.
+        const greenDominance = g - Math.min(r, b);
+        isCandidate = luma > 155 && greenDominance < 25;
+      }
 
       if (isCandidate) nonGrassPx.push([x, y]);
 
