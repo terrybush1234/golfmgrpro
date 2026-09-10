@@ -222,11 +222,14 @@ function analyze() {
   const grassG = gN > 80 ? gG/gN : 110;
   const grassB = gN > 80 ? gB/gN : 50;
 
+  // Only analyze the top 65% of the frame — feet are always at the bottom
+  const SCAN_H = Math.floor(H * 0.65);
+
   // Pass 2: find non-grass pixels above shadow level (not shadow, not grass)
   const nonGrassPx = [];
   const dbgImg = showDebug ? dbgCtx.createImageData(W, H) : null;
 
-  for (let y=0; y<H; y++) {
+  for (let y=0; y<SCAN_H; y++) {
     for (let x=0; x<W; x++) {
       const i = (y*W+x)*4;
       const r=data[i], g=data[i+1], b=data[i+2];
@@ -346,6 +349,19 @@ function loop() {
   if (++frameCount % 3 !== 0 || !video.videoWidth) return;
 
   ctx.clearRect(0,0,overlay.width,overlay.height);
+
+  // Draw scan zone guide (top 65% of frame)
+  const zoneH = overlay.height * 0.65;
+  ctx.strokeStyle = 'rgba(232,245,77,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(8, 8, overlay.width-16, zoneH-16);
+  ctx.setLineDash([]);
+  // Subtle label
+  ctx.font = '11px "DM Mono",monospace';
+  ctx.fillStyle = 'rgba(232,245,77,0.35)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('aim hole + ball here', overlay.width/2, 12);
 
   // Draw debug pixel layer first (behind circles)
   if (showDebug) {
