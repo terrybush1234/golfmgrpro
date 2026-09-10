@@ -359,8 +359,12 @@ function detectHalf(box, side, mode, maxRadSc) {
 
 // ── Touch / mouse: draw boxes ─────────────────────────────────────────────
 function getPos(e) {
-  if (e.touches) { const t=e.touches[0]; return {x:t.clientX,y:t.clientY}; }
-  return {x:e.clientX,y:e.clientY};
+  const rect=overlay.getBoundingClientRect();
+  if (e.touches) {
+    const t=e.touches[0];
+    return {x:t.clientX-rect.left, y:t.clientY-rect.top};
+  }
+  return {x:e.clientX-rect.left, y:e.clientY-rect.top};
 }
 
 overlay.addEventListener('touchstart', e=>{
@@ -384,11 +388,13 @@ overlay.addEventListener('touchend', e=>{
 
 overlay.addEventListener('mousedown', e=>{
   if (state!=='draw') return;
-  drawing={startX:e.clientX,startY:e.clientY,curX:e.clientX,curY:e.clientY};
+  const {x,y}=getPos(e);
+  drawing={startX:x,startY:y,curX:x,curY:y};
 });
 overlay.addEventListener('mousemove', e=>{
   if (!drawing) return;
-  drawing.curX=e.clientX; drawing.curY=e.clientY; redraw();
+  const {x,y}=getPos(e);
+  drawing.curX=x; drawing.curY=y; redraw();
 });
 overlay.addEventListener('mouseup', ()=>finishDraw());
 
