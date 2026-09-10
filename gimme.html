@@ -63,7 +63,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Draw a box around the <span style="color:#e8f54d">hole</span>, then draw a box around the <span style="color:#72d472">ball</span>.</p>
+    <p>Draw one box around both the <span style="color:#e8f54d">hole</span> and the <span style="color:#72d472">ball</span> — hole on left, ball on right.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -105,10 +105,10 @@ const verdEl    = document.getElementById('verdict');
 const tips      = document.getElementById('tips');
 
 let gimmeIn = 24, running = false;
-let state = 'hole'; // 'hole' | 'ball' | 'done'
+let state = 'draw'; // 'draw' | 'done'
 
-// Boxes drawn by user: { x1,y1,x2,y2 } in screen coords, or null
-let holeBox = null, ballBox = null;
+// The single box drawn by user
+let sceneBox = null;
 // Box being drawn right now
 let drawing = null; // { startX, startY, curX, curY }
 
@@ -315,15 +315,29 @@ function redraw() {
     ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
   }
 
-  // Completed boxes
-  drawBox(holeBox,'#e8f54d','HOLE');
-  drawBox(ballBox,'#72d472','BALL');
+  // Completed scene box — draw it split showing hole/ball halves
+  if (sceneBox) {
+    const {x1,y1,x2,y2}=sceneBox;
+    const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
+    const midX=x+w/2;
+    // Hole half (yellow)
+    ctx.save(); ctx.strokeStyle='#e8f54d'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]);
+    ctx.strokeRect(x,y,w/2,h); ctx.setLineDash([]);
+    ctx.font='bold 14px "DM Mono",monospace'; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillStyle='rgba(14,26,14,.88)'; ctx.fillRect(x+4,y+4,54,22);
+    ctx.fillStyle='#e8f54d'; ctx.fillText('HOLE',x+9,y+6);
+    // Ball half (green)
+    ctx.strokeStyle='#72d472'; ctx.setLineDash([8,4]);
+    ctx.strokeRect(midX,y,w/2,h); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(14,26,14,.88)'; ctx.fillRect(midX+4,y+4,48,22);
+    ctx.fillStyle='#72d472'; ctx.fillText('BALL',midX+9,y+6);
+    ctx.restore();
+  }
 
   // Box being drawn right now
   if (drawing) {
-    const color = state==='hole'?'#e8f54d':'#72d472';
-    drawBox({x1:drawing.startX,y1:drawing.startY,x2:drawing.curX,y2:drawing.curY}, color,
-            state==='hole'?'HOLE':'BALL');
+    drawBox({x1:drawing.startX,y1:drawing.startY,x2:drawing.curX,y2:drawing.curY},
+            '#aaccaa','BOX');
   }
 
   // Detected rings
@@ -331,12 +345,18 @@ function redraw() {
   drawRing(rings[1]);
 }
 
-// ── Detect inside a box ───────────────────────────────────────────────────
-function detectInBox(box, mode, maxRadSc) {
-  const cx=(box.x1+box.x2)/2, cy=(box.y1+box.y2)/2;
-  const halfW=Math.abs(box.x2-box.x1)/2, halfH=Math.abs(box.y2-box.y1)/2;
-  const searchR=Math.min(halfW,halfH);
-  return findObject(cx,cy,searchR,maxRadSc,mode);
+// ── Detect inside half of the scene box ──────────────────────────────────
+function detectHalf(box, side, mode, maxRadSc) {
+  const {x1,y1,x2,y2}=box;
+  const left=Math.min(x1,x2), right=Math.max(x1,x2);
+  const top=Math.min(y1,y2), bot=Math.max(y1,y2);
+  const mid=(left+right)/2;
+  const hx = side==='left' ? (left+mid)/2 : (mid+right)/2;
+  const hy = (top+bot)/2;
+  const halfW = (right-left)/4; // quarter of full width = half-box radius
+  const halfH = (bot-top)/2;
+  const searchR = Math.min(halfW, halfH) * 0.9;
+  return findObject(hx, hy, searchR, maxRadSc, mode);
 }
 
 // ── Touch / mouse: draw boxes ─────────────────────────────────────────────
@@ -347,7 +367,7 @@ function getPos(e) {
 
 overlay.addEventListener('touchstart', e=>{
   e.preventDefault();
-  if (state==='done') return;
+  if (state!=='draw') return;
   const {x,y}=getPos(e);
   drawing={startX:x,startY:y,curX:x,curY:y};
 },{passive:false});
@@ -365,7 +385,7 @@ overlay.addEventListener('touchend', e=>{
 });
 
 overlay.addEventListener('mousedown', e=>{
-  if (state==='done') return;
+  if (state!=='draw') return;
   drawing={startX:e.clientX,startY:e.clientY,curX:e.clientX,curY:e.clientY};
 });
 overlay.addEventListener('mousemove', e=>{
@@ -379,32 +399,28 @@ function finishDraw() {
   const box={x1:drawing.startX,y1:drawing.startY,x2:drawing.curX,y2:drawing.curY};
   const w=Math.abs(box.x2-box.x1), h=Math.abs(box.y2-box.y1);
   drawing=null;
-  if (w<20||h<20) { redraw(); return; } // too small — ignore
+  if (w<40||h<30) { redraw(); return; } // too small — ignore
 
-  if (state==='hole') {
-    holeBox=box;
-    const found=detectInBox(box,'dark',overlay.width*0.28);
-    const hx=found?found.x:(box.x1+box.x2)/2, hy=found?found.y:(box.y1+box.y2)/2;
-    const hr=found?found.r:overlay.width*0.10;
-    rings[0]={...rings[0],x:hx,y:hy,r:hr,targetX:hx,targetY:hy,targetR:hr,snapped:true};
-    // Pre-size ball ring from hole
-    const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
-    rings[1]={...rings[1],targetR:ballR};
-    state='ball';
-    statusTxt.textContent='Now draw a box around the ball';
-    tips.textContent='Drag to surround the ball';
+  sceneBox=box;
 
-  } else if (state==='ball') {
-    ballBox=box;
-    const holeR=rings[0].targetR;
-    const found=detectInBox(box,'bright',holeR*0.95);
-    const bx=found?found.x:(box.x1+box.x2)/2, by=found?found.y:(box.y1+box.y2)/2;
-    const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
-    rings[1]={...rings[1],x:bx,y:by,r:ballR,targetX:bx,targetY:by,targetR:ballR,snapped:true};
-    startAnim();
-    state='done';
-    setTimeout(showResult,300);
-  }
+  // Hole = left half, darkest seed
+  const maxHoleR = overlay.width * 0.25;
+  const holeFound = detectHalf(box,'left','dark', maxHoleR);
+  const {x1,y1,x2,y2}=box;
+  const left=Math.min(x1,x2), right=Math.max(x1,x2), top=Math.min(y1,y2), bot=Math.max(y1,y2);
+  const hx=holeFound?holeFound.x:(left+right)/4+left, hy=holeFound?holeFound.y:(top+bot)/2;
+  const hr=holeFound?holeFound.r:Math.min(right-left,bot-top)*0.15;
+
+  // Ball = right half, brightest seed — radius always derived from hole
+  const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+  const ballFound = detectHalf(box,'right','bright', ballR*1.4);
+  const bx=ballFound?ballFound.x:(left+right)*3/4, by=ballFound?ballFound.y:(top+bot)/2;
+
+  rings[0]={...rings[0],x:hx,y:hy,r:hr,targetX:hx,targetY:hy,targetR:hr,snapped:true};
+  rings[1]={...rings[1],x:bx,y:by,r:ballR,targetX:bx,targetY:by,targetR:ballR,snapped:true};
+  startAnim();
+  state='done';
+  setTimeout(showResult,350);
   redraw();
 }
 
@@ -418,12 +434,12 @@ document.querySelectorAll('.gimme-btn').forEach(b=>{
 });
 
 function reset() {
-  state='hole'; holeBox=null; ballBox=null; drawing=null;
+  state='draw'; sceneBox=null; drawing=null;
   if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
   initRings();
   distEl.textContent='—'; verdEl.textContent=''; verdEl.className='';
-  statusTxt.textContent='Draw a box around the hole';
-  tips.textContent='Drag to surround the hole';
+  statusTxt.textContent='Draw a box around hole + ball';
+  tips.textContent='Drag to surround both — hole on left, ball on right';
   redraw();
 }
 
