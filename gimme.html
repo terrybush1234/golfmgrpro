@@ -230,16 +230,20 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   const rad = Math.sqrt(pts.length / Math.PI);
   if (rad < minRad || rad > W * maxRadFrac) return null;
 
-  // Circularity check: bounding box aspect ratio.
-  // Shoes/feet are elongated (ratio < 0.45). Circles are ~1.0.
+  // Fill density: real circles fill their area. Shoes/irregular blobs don't.
+  // pixels / (π × r²) should be > 0.30 for a genuine circular object.
+  const area = Math.PI * rad * rad;
+  const density = pts.length / area;
+  if (density < 0.30) return null; // sparse = not a real circle
+
+  // Bounding box aspect ratio: reject elongated shapes
   let minX=W,maxX=0,minY=H,maxY=0;
   for (const [x,y] of pts) {
     if (x<minX) minX=x; if (x>maxX) maxX=x;
     if (y<minY) minY=y; if (y>maxY) maxY=y;
   }
-  const bw = maxX-minX+1, bh = maxY-minY+1;
-  const aspect = Math.min(bw,bh) / Math.max(bw,bh);
-  if (aspect < 0.45) return null; // too elongated — reject shoes, feet, clubs
+  const bw=maxX-minX+1, bh=maxY-minY+1;
+  if (Math.min(bw,bh)/Math.max(bw,bh) < 0.45) return null;
 
   return { cx, cy, rad, n: pts.length };
 }
