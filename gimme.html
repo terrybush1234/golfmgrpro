@@ -188,12 +188,23 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   return { cx, cy, rad, n: pts.length };
 }
 
+// Pixel canvas for debug painting — same size as off
+const dbgCanvas = document.createElement('canvas');
+dbgCanvas.width = W; dbgCanvas.height = H;
+const dbgCtx = dbgCanvas.getContext('2d');
+
 function analyze() {
   offCtx.drawImage(video, 0, 0, W, H);
-  const data = offCtx.getImageData(0, 0, W, H).data;
+  const src  = offCtx.getImageData(0, 0, W, H);
+  const data = src.data;
+
+  // Debug paint layer
+  const dbgImg = dbgCtx.createImageData(W, H);
+  const dbgD   = dbgImg.data;
 
   const darkPx = [], whitePx = [];
   let minL=255, maxL=0;
+  let tapLuma = null, tapSat = null;
 
   for (let y=0; y<H; y++) {
     for (let x=0; x<W; x++) {
@@ -204,12 +215,27 @@ function analyze() {
       if (luma < minL) minL = luma;
       if (luma > maxL) maxL = luma;
 
-      // Hole: darkest pixels that aren't green-tinted grass shadow
-      // (grass shadow: g channel much higher than r and b)
-      if (luma < 75 && (g - Math.min(r,b)) < 30) darkPx.push([x,y]);
+      // Sample at tap point for luma readout
+      if (tapPoint) {
+        const tx = Math.round(tapPoint.x * W / overlay.width);
+        const ty = Math.round(tapPoint.y * H / overlay.height);
+        if (x===tx && y===ty) { tapLuma=Math.round(luma); tapSat=Math.round(sat); }
+      }
 
-      // Ball: bright white, low saturation (not yellow flag / sun glare on metal)
-      if (luma > 165 && sat < 60) whitePx.push([x,y]);
+      // Hole: dark & not green-tinted
+      const isHole = luma < 75 && (g - Math.min(r,b)) < 30;
+      // Ball: bright white
+      const isBall = luma > 165 && sat < 60;
+
+      if (isHole) darkPx.push([x,y]);
+      if (isBall) whitePx.push([x,y]);
+
+      // Paint debug pixels
+      if (showDebug) {
+        if (isHole)      { dbgD[i]=255;dbgD[i+1]=60; dbgD[i+2]=60; dbgD[i+3]=180; }
+        else if (isBall) { dbgD[i]=60; dbgD[i+1]=255;dbgD[i+2]=60; dbgD[i+3]=180; }
+        else             { dbgD[i+3]=0; }
+      }
     }
   }
 
@@ -217,18 +243,35 @@ function analyze() {
   const scaleY = overlay.height / H;
   const avgScale = (scaleX + scaleY) / 2;
 
-  debugInfo = `dark:${darkPx.length} white:${whitePx.length} luma ${Math.round(minL)}-${Math.round(maxL)}`;
+  if (tapLuma !== null) {
+    debugInfo = `tap luma:${tapLuma} sat:${tapSat} | dark:${darkPx.length} white:${whitePx.length}`;
+  } else {
+    debugInfo = `dark:${darkPx.length} white:${whitePx.length} | luma range ${Math.round(minL)}-${Math.round(maxL)}`;
+  }
+
+  // Draw debug pixel layer onto overlay
+  if (showDebug) {
+    dbgCtx.putImageData(dbgImg, 0, 0);
+    ctx.drawImage(dbgCanvas, 0, 0, overlay.width, overlay.height);
+  }
 
   let hole = null, ball = null;
-
   const hc = clusterPx(darkPx,  8, 2, 0.45);
   if (hc) hole = { x: hc.cx*scaleX, y: hc.cy*scaleY, r: Math.max(8, hc.rad*avgScale) };
-
   const bc = clusterPx(whitePx, 5, 2, 0.42);
   if (bc) ball = { x: bc.cx*scaleX, y: bc.cy*scaleY, r: Math.max(10, bc.rad*avgScale) };
 
   return { hole, ball };
 }
+
+// Tap anywhere on camera to sample luma at that point
+let tapPoint = null;
+overlay.addEventListener('click', e => {
+  const rect = overlay.getBoundingClientRect();
+  tapPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  // Clear tap after 3 seconds
+  setTimeout(() => { tapPoint = null; }, 3000);
+});
 
 // ── Draw ────────────────────────────────────────────────
 function drawCircle(cx, cy, r, col, lw = 2.5) {
@@ -332,5 +375,4 @@ function loop() {
 }
 
 let showDebug = true;
-overlay.addEventListener('click', () => { showDebug = !showDebug; });
 </script>
