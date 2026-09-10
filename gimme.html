@@ -193,10 +193,10 @@ function analyze() {
       const r=data[i], g=data[i+1], b=data[i+2];
       const luma = 0.299*r + 0.587*g + 0.114*b;
 
-      // ── HOLE: always the darkest thing in frame ───────────────────────
-      // A depression casts shadow regardless of lighting or grass color.
-      // Exclude green-tinted pixels (grass shadow, not hole).
-      if (luma < 70 && (g - Math.min(r,b)) < 25) {
+      // ── HOLE: nearly black, neutral (not green-tinted shadow) ────────
+      // Real cup interior is very dark. Require luma < 45 so stray shadows
+      // on clothing/ground don't trigger. Green-tint check excludes grass shadow.
+      if (luma < 45 && (g - Math.min(r,b)) < 20) {
         holePx.push([x, y]);
       }
 
@@ -217,7 +217,7 @@ function analyze() {
   const sx=overlay.width/W, sy=overlay.height/H, sc=(sx+sy)/2;
   let hole=null, ball=null;
 
-  const hc = clusterPx(holePx, 6, 2, 0.45);
+  const hc = clusterPx(holePx, 18, 3, 0.45);
   if (hc) hole = { x: hc.cx*sx, y: hc.cy*sy, r: Math.max(8, hc.rad*sc) };
 
   const bc = clusterPx(ballPx, 5, 2, 0.35);
