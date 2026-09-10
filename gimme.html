@@ -339,10 +339,17 @@ function analyze() {
 
   if (clusters.length === 2) {
     // Assign by position: hole is always the LEFT object, ball is always RIGHT.
-    // User positions camera so hole is on the left side of the frame.
+    // User positions camera so hole is LEFT and ball is RIGHT — never above/below.
     const [left, right] = clusters[0].cx <= clusters[1].cx ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
-    // Still require left object is larger (hole > ball) to reject two same-size objects
-    if (left.rad >= right.rad * 0.8) { // hole should be >= ball size
+    // Require mostly horizontal alignment: vertical gap must be less than the larger radius.
+    // This rejects any pair where one object is clearly above or below the other.
+    const verticalGap = Math.abs(left.cy - right.cy);
+    const maxVert = Math.max(left.rad, right.rad) * 1.5;
+    if (verticalGap > maxVert) {
+      // One above the other — treat the larger as the hole only, ignore the other
+      const bigger = left.rad >= right.rad ? left : right;
+      hole = { x: bigger.cx*sx2, y: bigger.cy*sy2, r: Math.max(10, bigger.rad*sc) };
+    } else if (left.rad >= right.rad * 0.8) {
       hole = { x: left.cx*sx2,  y: left.cy*sy2,  r: Math.max(10, left.rad*sc) };
       ball = { x: right.cx*sx2, y: right.cy*sy2, r: Math.max(6,  right.rad*sc) };
     } else {
