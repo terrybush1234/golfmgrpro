@@ -140,7 +140,7 @@ let bgR = 70, bgG = 110, bgB = 50, bgCalibrated = false;
 let locked = false;
 let lockedHole = null, lockedBall = null, lockedInches = 0;
 let confirmCount = 0;
-const CONFIRM_FRAMES = 5;
+const CONFIRM_FRAMES = 3;
 let lastHole = null, lastBall = null;
 
 // Smoothed display positions (exponential moving average)
@@ -241,10 +241,9 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   if (rad < minRad || rad > W * maxRadFrac) return null;
 
   // Fill density: real circles fill their area. Shoes/irregular blobs don't.
-  // pixels / (π × r²) should be > 0.30 for a genuine circular object.
   const area = Math.PI * rad * rad;
   const density = pts.length / area;
-  if (density < 0.30) return null; // sparse = not a real circle
+  if (density < 0.20) return null; // was 0.30 — relaxed for real-world lighting
 
   // Bounding box aspect ratio: reject elongated shapes
   let minX=W,maxX=0,minY=H,maxY=0;
@@ -253,7 +252,7 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
     if (y<minY) minY=y; if (y>maxY) maxY=y;
   }
   const bw=maxX-minX+1, bh=maxY-minY+1;
-  if (Math.min(bw,bh)/Math.max(bw,bh) < 0.45) return null;
+  if (Math.min(bw,bh)/Math.max(bw,bh) < 0.40) return null;
 
   return { cx, cy, rad, n: pts.length };
 }
@@ -302,8 +301,8 @@ function analyze() {
       const dr=r-grassR, dg=g-grassG, db=b-grassB;
       const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
 
-      // Not grass, not a shadow (luma > 60 excludes very dark areas AND most shadows)
-      const isCandidate = colorDist > 50 && luma > 60;
+      // Not grass, not a shadow (luma > 50 excludes very dark areas AND most shadows)
+      const isCandidate = colorDist > 35 && luma > 50;
 
       if (isCandidate) nonGrassPx.push([x, y]);
 
@@ -322,18 +321,8 @@ function analyze() {
     dbgCtx.putImageData(dbgImg, 0, 0);
   }
 
-  // Cluster all non-grass candidates
-  const cluster = clusterPx(nonGrassPx, 5, 2, 0.5);
-  if (!cluster) return { hole: null, ball: null, clusters: [] };
-
-  // Split into two groups: pixels close to cluster center vs farther out
-  // The hole (larger) and ball (smaller) may form two sub-clusters.
-  // Strategy: find largest cluster first (hole candidate), then look for
-  // a second cluster that is clearly separated from it.
-
   const sx2 = overlay.width/W, sy2 = overlay.height/H, sc=(sx2+sy2)/2;
 
-  // Find up to 2 distinct clusters by splitting non-grass pixels
   const clusters = findTwoClusters(nonGrassPx, gimmeIn);
   let hole = null, ball = null;
 
@@ -483,8 +472,8 @@ function loop() {
     const inches  = Math.hypot(smBall.x-smHole.x, smBall.y-smHole.y) / pxPerIn;
 
     // Stability check on raw (not smoothed) positions
-    const stableHole = lastHole && Math.hypot(hole.x-lastHole.x, hole.y-lastHole.y) < hole.r*0.4;
-    const stableBall = lastBall && Math.hypot(ball.x-lastBall.x, ball.y-lastBall.y) < ball.r*0.8;
+    const stableHole = lastHole && Math.hypot(hole.x-lastHole.x, hole.y-lastHole.y) < hole.r*0.7;
+    const stableBall = lastBall && Math.hypot(ball.x-lastBall.x, ball.y-lastBall.y) < ball.r*1.2;
     if (stableHole && stableBall) confirmCount++;
     else confirmCount = 0;
     lastHole = hole; lastBall = ball;
