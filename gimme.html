@@ -154,64 +154,77 @@ function captureFrame() {
 const s2o = (sx,sy) => ({ ox:(sx/overlay.width)*OW, oy:(sy/overlay.height)*OH });
 const o2s = (ox,oy) => ({ sx:(ox/OW)*overlay.width, sy:(oy/OH)*overlay.height });
 
-// ── Ray detection ─────────────────────────────────────────────────────────
-// Returns { cx, cy, r, score } in offscreen coords, or null
-function detectAt(data, ox, oy, maxR) {
-  const cx=Math.round(ox), cy=Math.round(oy);
-  let cr=0,cg=0,cb=0,cn=0;
-  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
-    const nx=cx+dx,ny=cy+dy;
+// ── Pixel helpers ─────────────────────────────────────────────────────────
+function luma(data,ox,oy) {
+  const i=(Math.round(oy)*OW+Math.round(ox))*4;
+  return 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+}
+function avgLuma(data,ox,oy,r) {
+  let sum=0,n=0;
+  const ir=Math.ceil(r);
+  for (let dy=-ir;dy<=ir;dy++) for (let dx=-ir;dx<=ir;dx++) {
+    if (dx*dx+dy*dy>r*r) continue;
+    const nx=Math.round(ox+dx), ny=Math.round(oy+dy);
     if (nx<0||nx>=OW||ny<0||ny>=OH) continue;
-    const i=(ny*OW+nx)*4; cr+=data[i]; cg+=data[i+1]; cb+=data[i+2]; cn++;
+    sum+=luma(data,nx,ny); n++;
   }
-  if (!cn) return null;
-  cr/=cn; cg/=cn; cb/=cn;
+  return n?sum/n:128;
+}
 
+// Find the darkest (hole) or brightest (ball) seed in a search area
+// mode: 'dark' | 'bright'
+function findSeed(data, ox0, oy0, searchR, mode) {
+  const STEP=Math.max(2,searchR/10);
+  let bestVal = mode==='dark'?999:-1, bx=ox0, by=oy0;
+  for (let dy=-searchR;dy<=searchR;dy+=STEP) {
+    for (let dx=-searchR;dx<=searchR;dx+=STEP) {
+      if (dx*dx+dy*dy>searchR*searchR) continue;
+      const nx=ox0+dx, ny=oy0+dy;
+      if (nx<2||nx>=OW-2||ny<2||ny>=OH-2) continue;
+      const v=avgLuma(data,nx,ny,2);
+      if ((mode==='dark'&&v<bestVal)||(mode==='bright'&&v>bestVal)) {
+        bestVal=v; bx=nx; by=ny;
+      }
+    }
+  }
+  return {ox:bx,oy:by};
+}
+
+// From seed, cast rays outward. For 'dark' seed: stop when luma rises sharply.
+// For 'bright' seed: stop when luma drops sharply.
+function rayRadius(data, ox, oy, maxR, mode) {
   const RAYS=24;
+  const seedL=avgLuma(data,ox,oy,2);
   const radii=[];
   for (let i=0;i<RAYS;i++) {
-    const angle=(i/RAYS)*Math.PI*2, dx=Math.cos(angle), dy=Math.sin(angle);
+    const angle=(i/RAYS)*Math.PI*2;
+    const dx=Math.cos(angle), dy=Math.sin(angle);
     let edgeD=maxR;
-    for (let d=1.5;d<=maxR;d+=0.4) {
+    for (let d=1.5;d<=maxR;d+=0.5) {
       const nx=Math.round(ox+dx*d), ny=Math.round(oy+dy*d);
       if (nx<0||nx>=OW||ny<0||ny>=OH) { edgeD=d; break; }
-      const idx=(ny*OW+nx)*4;
-      const dist=Math.sqrt((data[idx]-cr)**2+(data[idx+1]-cg)**2+(data[idx+2]-cb)**2);
-      if (dist>40) { edgeD=d; break; }
+      const v=luma(data,nx,ny);
+      const diff = mode==='dark' ? v-seedL : seedL-v;
+      if (diff>45) { edgeD=d; break; }
     }
     radii.push(edgeD);
   }
-
-  // Use lower-quartile median to avoid rays that escape through gaps
   const sorted=[...radii].sort((a,b)=>a-b);
-  const medR=sorted[Math.floor(RAYS*0.40)]; // 40th percentile = tighter fit
-  const mean=radii.reduce((s,v)=>s+v,0)/RAYS;
-  const variance=radii.reduce((s,v)=>s+(v-mean)**2,0)/RAYS;
-  const score = medR>1.5 ? medR/(1+variance) : 0;
-  return {cx:ox,cy:oy,r:medR,score};
+  return sorted[Math.floor(RAYS*0.40)]; // 40th pct — tight fit
 }
 
-// Grid search: find roundest object near screen point
-// Returns screen coords { x, y, r } or null
-function findNear(screenX, screenY, searchRadSc, maxRadSc) {
+// Find hole (dark circle) or ball (bright circle) near a screen tap
+// mode: 'dark'|'bright', returns screen coords {x,y,r} or null
+function findObject(screenX, screenY, searchRadSc, maxRadSc, mode) {
   const data=captureFrame();
   const {ox:ox0,oy:oy0}=s2o(screenX,screenY);
-  const searchOff=(searchRadSc/overlay.width)*OW;
-  const maxROff  =(maxRadSc   /overlay.width)*OW;
-  const STEP=Math.max(1.5,searchOff/7);
-  let best=null;
-  for (let dy=-searchOff;dy<=searchOff;dy+=STEP) {
-    for (let dx=-searchOff;dx<=searchOff;dx+=STEP) {
-      if (Math.hypot(dx,dy)>searchOff) continue;
-      const ox=ox0+dx,oy=oy0+dy;
-      if (ox<1||ox>=OW-1||oy<1||oy>=OH-1) continue;
-      const res=detectAt(data,ox,oy,maxROff);
-      if (res&&(!best||res.score>best.score)) best=res;
-    }
-  }
-  if (!best||best.r<1.5) return null;
-  const {sx,sy}=o2s(best.cx,best.cy);
-  return {x:sx, y:sy, r:(best.r/OW)*overlay.width};
+  const searchR=(searchRadSc/overlay.width)*OW;
+  const maxR   =(maxRadSc   /overlay.width)*OW;
+  const seed=findSeed(data,ox0,oy0,searchR,mode);
+  const r=rayRadius(data,seed.ox,seed.oy,maxR,mode);
+  if (r<2) return null;
+  const {sx,sy}=o2s(seed.ox,seed.oy);
+  return {x:sx, y:sy, r:(r/OW)*overlay.width};
 }
 
 // ── Animation loop ────────────────────────────────────────────────────────
@@ -250,17 +263,16 @@ function handleTap(screenX, screenY) {
   setTimeout(()=>{ tapMarker=null; redraw(); }, 800);
 
   if (state==='hole') {
-    // Tighter search — don't drift more than ~12% of screen width from tap
-    const found=findNear(screenX,screenY, overlay.width*0.12, overlay.width*0.28);
+    // Hole = dark circle — search for darkest seed, then ray-find its edge
+    const found=findObject(screenX,screenY, overlay.width*0.18, overlay.width*0.28, 'dark');
     const hx=found?found.x:screenX, hy=found?found.y:screenY;
     const hr=found?found.r:overlay.width*0.11;
 
     rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr;
     rings[0].snapped=true;
 
-    // Ball ring starts at TAP location (separate from hole), collapses on 2nd tap
     const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
-    rings[1].x=screenX; rings[1].y=screenY; // positioned at tap, not hole
+    rings[1].x=screenX; rings[1].y=screenY;
     rings[1].targetX=screenX; rings[1].targetY=screenY;
     rings[1].targetR=ballR;
 
@@ -271,13 +283,11 @@ function handleTap(screenX, screenY) {
 
   } else if (state==='ball') {
     const holeR=rings[0].targetR;
-    // Tight search — stay close to where user pressed
-    const ballSearchR=overlay.width*0.13;
-    const found=findNear(screenX,screenY, ballSearchR, holeR*0.90);
+    // Ball = bright white circle — search for brightest seed, then ray-find its edge
+    const found=findObject(screenX,screenY, overlay.width*0.18, holeR*0.90, 'bright');
     const bx=found?found.x:screenX, by=found?found.y:screenY;
     const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
 
-    // Start ring at tap location, animate to detected center
     rings[1].x=screenX; rings[1].y=screenY;
     rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR;
     rings[1].snapped=true;
