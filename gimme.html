@@ -171,61 +171,59 @@ function avgLuma(data,ox,oy,r) {
   return n?sum/n:128;
 }
 
-// Find darkest/brightest seed strictly within screen-coord bounds
-function findSeedInBounds(data, sMinX,sMinY,sMaxX,sMaxY, mode) {
-  // Convert screen bounds to offscreen coords
-  const oX0=(sMinX/overlay.width)*OW, oX1=(sMaxX/overlay.width)*OW;
-  const oY0=(sMinY/overlay.height)*OH, oY1=(sMaxY/overlay.height)*OH;
-  const STEP=Math.max(1.5,(oX1-oX0)/14);
-  let bestVal=mode==='dark'?999:-1;
-  let bx=(oX0+oX1)/2, by=(oY0+oY1)/2;
-  for (let oy=oY0+2;oy<=oY1-2;oy+=STEP) {
-    for (let ox=oX0+2;ox<=oX1-2;ox+=STEP) {
-      if (ox<2||ox>=OW-2||oy<2||oy>=OH-2) continue;
-      const v=avgLuma(data,ox,oy,2);
+// Convert screen box to offscreen box
+function screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY) {
+  return {
+    oMinX: Math.max(0,(sMinX/overlay.width)*OW),
+    oMaxX: Math.min(OW,(sMaxX/overlay.width)*OW),
+    oMinY: Math.max(0,(sMinY/overlay.height)*OH),
+    oMaxY: Math.min(OH,(sMaxY/overlay.height)*OH),
+  };
+}
+
+// Detect hole (dark) or ball (bright) strictly within a screen-coord box.
+// Uses pixel-counting: find the dominant dark/bright cluster, measure its area → radius.
+// Returns screen coords {x, y, r} or null.
+function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
+  const data=captureFrame();
+  const {oMinX,oMaxX,oMinY,oMaxY}=screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY);
+
+  // 1. Find the extreme pixel (darkest/brightest) — that's our seed
+  let bestVal=mode==='dark'?999:-1, sx=( oMinX+oMaxX)/2, sy=(oMinY+oMaxY)/2;
+  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++) {
+    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++) {
+      const v=luma(data,x,y);
       if ((mode==='dark'&&v<bestVal)||(mode==='bright'&&v>bestVal)) {
-        bestVal=v; bx=ox; by=oy;
+        bestVal=v; sx=x; sy=y;
       }
     }
   }
-  return {ox:bx,oy:by};
-}
 
-// Cast rays from seed, stopping at edge or at the offscreen bounding box
-function rayRadiusInBounds(data, ox, oy, maxR, mode, oMinX,oMinY,oMaxX,oMaxY) {
-  const RAYS=32;
-  const seedL=avgLuma(data,ox,oy,2);
-  const threshold = mode==='dark' ? 85 : seedL*0.65;
-  const radii=[];
-  for (let i=0;i<RAYS;i++) {
-    const angle=(i/RAYS)*Math.PI*2;
-    const dxr=Math.cos(angle), dyr=Math.sin(angle);
-    let edgeD=maxR;
-    for (let d=1.5;d<=maxR;d+=0.4) {
-      const nx=Math.round(ox+dxr*d), ny=Math.round(oy+dyr*d);
-      // Stop at canvas edge or box boundary
-      if (nx<0||nx>=OW||ny<0||ny>=OH||nx<oMinX||nx>oMaxX||ny<oMinY||ny>oMaxY) { edgeD=d; break; }
-      const v=luma(data,nx,ny);
-      if (mode==='dark' ? v>threshold : v<threshold) { edgeD=d; break; }
+  // 2. Adaptive threshold: halfway between seed and median of box
+  let vals=[];
+  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++)
+    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++)
+      vals.push(luma(data,x,y));
+  vals.sort((a,b)=>a-b);
+  const medianV=vals[Math.floor(vals.length/2)];
+  const thresh = mode==='dark' ? (bestVal+medianV)/2 : (bestVal+medianV)/2;
+
+  // 3. Count pixels that belong to the object (dark/bright side of threshold)
+  let sumX=0,sumY=0,count=0;
+  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++) {
+    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++) {
+      const v=luma(data,x,y);
+      const inObj = mode==='dark' ? v<thresh : v>thresh;
+      if (inObj) { sumX+=x; sumY+=y; count++; }
     }
-    radii.push(edgeD);
   }
-  const sorted=[...radii].sort((a,b)=>a-b);
-  return sorted[Math.floor(RAYS*(mode==='dark'?0.50:0.40))];
-}
+  if (count<4) return null;
 
-// Detect object strictly within a screen-coord bounding box
-// Returns screen coords {x,y,r} or null
-function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode, maxRadSc) {
-  const data=captureFrame();
-  const oMinX=(sMinX/overlay.width)*OW, oMaxX=(sMaxX/overlay.width)*OW;
-  const oMinY=(sMinY/overlay.height)*OH, oMaxY=(sMaxY/overlay.height)*OH;
-  const maxROff=(maxRadSc/overlay.width)*OW;
-  const seed=findSeedInBounds(data,sMinX,sMinY,sMaxX,sMaxY,mode);
-  const r=rayRadiusInBounds(data,seed.ox,seed.oy,maxROff,mode,oMinX,oMinY,oMaxX,oMaxY);
-  if (r<2) return null;
-  const {sx,sy}=o2s(seed.ox,seed.oy);
-  return {x:sx, y:sy, r:(r/OW)*overlay.width};
+  // 4. Centroid and area-derived radius
+  const cx=sumX/count, cy=sumY/count;
+  const rOff=Math.sqrt(count/Math.PI);
+  const {sx:scx,sy:scy}=o2s(cx,cy);
+  return {x:scx, y:scy, r:(rOff/OW)*overlay.width};
 }
 
 // ── Animation loop ────────────────────────────────────────────────────────
@@ -347,14 +345,14 @@ function redraw() {
 }
 
 // ── Detect inside half of the scene box — fully bounded ──────────────────
-function detectHalf(box, side, mode, maxRadSc) {
+function detectHalf(box, side, mode) {
   const {x1,y1,x2,y2}=box;
   const left=Math.min(x1,x2), right=Math.max(x1,x2);
   const top=Math.min(y1,y2),  bot=Math.max(y1,y2);
   const mid=(left+right)/2;
   const bLeft  = side==='left' ? left  : mid;
   const bRight = side==='left' ? mid   : right;
-  return findObjectInBounds(bLeft, top, bRight, bot, mode, maxRadSc);
+  return findObjectInBounds(bLeft, top, bRight, bot, mode);
 }
 
 // ── Touch / mouse: draw boxes ─────────────────────────────────────────────
@@ -407,18 +405,18 @@ function finishDraw() {
 
   sceneBox=box;
 
-  // Hole = left half, darkest seed
-  const maxHoleR = overlay.width * 0.25;
-  const holeFound = detectHalf(box,'left','dark', maxHoleR);
   const {x1,y1,x2,y2}=box;
   const left=Math.min(x1,x2), right=Math.max(x1,x2), top=Math.min(y1,y2), bot=Math.max(y1,y2);
-  const hx=holeFound?holeFound.x:(left+right)/4+left, hy=holeFound?holeFound.y:(top+bot)/2;
-  const hr=holeFound?holeFound.r:Math.min(right-left,bot-top)*0.15;
 
-  // Ball = right half, brightest seed — radius always derived from hole
+  // Hole = left half, detect dark cluster
+  const holeFound = detectHalf(box,'left','dark');
+  const hx=holeFound?holeFound.x:(left+(right-left)*0.25), hy=holeFound?holeFound.y:(top+bot)/2;
+  const hr=holeFound?holeFound.r:(right-left)*0.12;
+
+  // Ball radius derived from hole (most accurate) — center from bright cluster in right half
   const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
-  const ballFound = detectHalf(box,'right','bright', ballR*1.4);
-  const bx=ballFound?ballFound.x:(left+right)*3/4, by=ballFound?ballFound.y:(top+bot)/2;
+  const ballFound = detectHalf(box,'right','bright');
+  const bx=ballFound?ballFound.x:(left+(right-left)*0.75), by=ballFound?ballFound.y:(top+bot)/2;
 
   rings[0]={...rings[0],x:hx,y:hy,r:hr,targetX:hx,targetY:hy,targetR:hr,snapped:true};
   rings[1]={...rings[1],x:bx,y:by,r:ballR,targetX:bx,targetY:by,targetR:ballR,snapped:true};
