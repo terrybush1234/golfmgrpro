@@ -366,17 +366,23 @@ function scoreCluster(c) { return c ? c.n / (Math.PI * c.rad * c.rad) : 0; }
 function findTwoClusters(pixels) {
   if (pixels.length < 5) return [];
 
-  // Find best cluster overall
-  const c1 = clusterPx(pixels, 5, 2, 0.5);
+  // Find best cluster overall (hole candidate)
+  const c1 = clusterPx(pixels, 5, 2, 0.45);
   if (!c1) return [];
 
-  // Remove c1 pixels, find best cluster in remainder
+  // Peel off c1 pixels generously so ball search isn't contaminated by hole edge
   const re1 = Math.sqrt(c1.n / Math.PI);
-  const rest = pixels.filter(([x,y]) => Math.hypot(x-c1.cx,y-c1.cy) > re1*2.2);
+  const rest = pixels.filter(([x,y]) => Math.hypot(x-c1.cx,y-c1.cy) > re1*3.0);
   if (rest.length < 4) return [c1];
 
-  const c2 = clusterPx(rest, 4, 1, 0.5);
+  // Ball must be smaller than hole — cap its max radius to just below c1's radius
+  const maxBallRadFrac = Math.min(0.35, (c1.rad * 0.85) / W);
+  const c2 = clusterPx(rest, 4, 1, maxBallRadFrac);
   if (!c2) return [c1];
+
+  // The two clusters must be spatially separated — centers farther apart than sum of radii
+  const dist = Math.hypot(c2.cx - c1.cx, c2.cy - c1.cy);
+  if (dist < c1.rad + c2.rad) return [c1]; // overlapping = same object
 
   return [c1, c2];
 }
