@@ -5,10 +5,8 @@
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 body {
-  height:100dvh; overflow:hidden;
-  background:#0e1a0e; color:#dff0df;
-  font-family:'DM Mono',monospace;
-  display:flex; flex-direction:column;
+  height:100dvh; overflow:hidden; background:#0e1a0e; color:#dff0df;
+  font-family:'DM Mono',monospace; display:flex; flex-direction:column;
   user-select:none; -webkit-user-select:none;
 }
 #cam-wrap { position:relative; flex:1; min-height:0; background:#000; overflow:hidden; }
@@ -16,16 +14,15 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
 #overlay { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair; }
 
 #cam-start {
-  display:flex; position:absolute; inset:0;
-  flex-direction:column; align-items:center; justify-content:center;
-  gap:20px; background:#0e1a0e; padding:32px; text-align:center;
+  display:flex; position:absolute; inset:0; flex-direction:column;
+  align-items:center; justify-content:center; gap:20px;
+  background:#0e1a0e; padding:32px; text-align:center;
 }
 #cam-start h2 { font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:700; }
 #cam-start p  { font-family:'Barlow Condensed',sans-serif; font-size:20px; color:#7a9a7a; max-width:300px; line-height:1.5; }
 #cam-start button {
   font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:700;
-  letter-spacing:.07em; text-transform:uppercase;
-  background:#e8f54d; color:#0e1a0e;
+  letter-spacing:.07em; text-transform:uppercase; background:#e8f54d; color:#0e1a0e;
   border:none; border-radius:8px; padding:16px 40px; cursor:pointer;
 }
 #cam-denied { display:none; position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:#0e1a0e; padding:32px; text-align:center; }
@@ -34,21 +31,15 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
 #cam-denied p  { font-family:'Barlow Condensed',sans-serif; font-size:18px; color:#7a9a7a; max-width:280px; line-height:1.4; }
 #cam-denied button { font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; background:#e8f54d; color:#0e1a0e; border:none; border-radius:6px; padding:12px 28px; cursor:pointer; }
 
-/* Tap ripple */
-@keyframes ripple { to { transform:translate(-50%,-50%) scale(3); opacity:0; } }
-.ripple { position:absolute; width:48px; height:48px; border-radius:50%; border:3px solid currentColor; pointer-events:none; animation:ripple .5s ease-out forwards; }
-
 #panel {
   background:#0e1a0e; border-top:2px solid #1e321e;
-  padding:14px 18px 18px; flex-shrink:0;
-  display:flex; flex-direction:column; gap:12px;
+  padding:14px 18px 18px; flex-shrink:0; display:flex; flex-direction:column; gap:12px;
 }
 #gimme-row { display:flex; gap:8px; }
 .gimme-btn {
   font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700;
-  background:#1c2e1c; color:#7a9a7a;
-  border:2px solid #2c422c; border-radius:6px;
-  padding:8px 0; cursor:pointer; flex:1;
+  background:#1c2e1c; color:#7a9a7a; border:2px solid #2c422c;
+  border-radius:6px; padding:8px 0; cursor:pointer; flex:1;
   -webkit-tap-highlight-color:transparent;
 }
 .gimme-btn.active { background:#243824; color:#e8f54d; border-color:#e8f54d; }
@@ -72,7 +63,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Press <span style="color:#e8f54d">near the hole</span>, then press <span style="color:#72d472">near the ball</span>. The app finds and measures each automatically.</p>
+    <p>Press <span style="color:#e8f54d">near the hole</span>, then press <span style="color:#72d472">near the ball</span>. Each ring collapses to fit automatically.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -103,6 +94,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
 
 <script>
 const HOLE_DIA_IN = 4.25;
+const BALL_DIA_IN = 1.68;
 
 const video     = document.getElementById('video');
 const overlay   = document.getElementById('overlay');
@@ -114,226 +106,264 @@ const tips      = document.getElementById('tips');
 
 let gimmeIn = 24, running = false;
 let state = 'hole'; // 'hole' | 'ball' | 'done'
-let hole = null, ball = null; // { x, y, r } screen coords
+
+// Animated ring state
+// Each ring: { x, y, r, targetX, targetY, targetR, snapped, color, label }
+let rings;
+
+function syncCanvas() {
+  const rect = overlay.parentElement.getBoundingClientRect();
+  overlay.width = rect.width; overlay.height = rect.height;
+}
+
+function initRings() {
+  const W = overlay.width, H = overlay.height;
+  const bigR  = Math.round(W * 0.26); // large ring for hole
+  const smlR  = Math.round(W * 0.16); // smaller ring for ball
+  rings = [
+    { x:W*0.50, y:H*0.42, r:bigR, targetX:W*0.50, targetY:H*0.42, targetR:bigR,
+      snapped:false, color:'#e8f54d', label:'HOLE' },
+    { x:W*0.50, y:H*0.42, r:smlR, targetX:W*0.50, targetY:H*0.42, targetR:smlR,
+      snapped:false, color:'#72d472', label:'BALL' },
+  ];
+}
 
 // ── Offscreen canvas ──────────────────────────────────────────────────────
 const OW = 320, OH = 240;
 const off = document.createElement('canvas');
 off.width = OW; off.height = OH;
-const offCtx = off.getContext('2d', { willReadFrequently: true });
+const offCtx = off.getContext('2d', { willReadFrequently:true });
 
 function getVideoCrop() {
-  const vW = video.videoWidth, vH = video.videoHeight;
-  const dW = overlay.width,    dH = overlay.height;
-  if (!vW || !dW) return { sx:0, sy:0, sw:vW||1, sh:vH||1 };
-  const vAR = vW/vH, dAR = dW/dH;
-  let sx, sy, sw, sh;
-  if (vAR > dAR) { sh=vH; sw=vH*dAR; sx=(vW-sw)/2; sy=0; }
-  else           { sw=vW; sh=vW/dAR; sx=0; sy=(vH-sh)/2; }
-  return { sx, sy, sw, sh };
+  const vW=video.videoWidth, vH=video.videoHeight, dW=overlay.width, dH=overlay.height;
+  if (!vW||!dW) return {sx:0,sy:0,sw:vW||1,sh:vH||1};
+  const vAR=vW/vH, dAR=dW/dH;
+  let sx,sy,sw,sh;
+  if (vAR>dAR) { sh=vH; sw=vH*dAR; sx=(vW-sw)/2; sy=0; }
+  else         { sw=vW; sh=vW/dAR; sx=0; sy=(vH-sh)/2; }
+  return {sx,sy,sw,sh};
 }
 
 function captureFrame() {
-  const { sx, sy, sw, sh } = getVideoCrop();
-  offCtx.drawImage(video, sx, sy, sw, sh, 0, 0, OW, OH);
-  return offCtx.getImageData(0, 0, OW, OH).data;
+  const {sx,sy,sw,sh}=getVideoCrop();
+  offCtx.drawImage(video,sx,sy,sw,sh,0,0,OW,OH);
+  return offCtx.getImageData(0,0,OW,OH).data;
 }
 
-// ── Ray detection: measure circular boundary from a seed point ────────────
+// Screen ↔ offscreen
+const s2o = (sx,sy) => ({ ox:(sx/overlay.width)*OW, oy:(sy/overlay.height)*OH });
+const o2s = (ox,oy) => ({ sx:(ox/OW)*overlay.width, sy:(oy/OH)*overlay.height });
+
+// ── Ray detection ─────────────────────────────────────────────────────────
+// Returns { cx, cy, r, score } in offscreen coords, or null
 function detectAt(data, ox, oy, maxR) {
-  const cx = Math.round(ox), cy = Math.round(oy);
-  let cr=0, cg=0, cb=0, cn=0;
-  for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
-    const nx=cx+dx, ny=cy+dy;
+  const cx=Math.round(ox), cy=Math.round(oy);
+  let cr=0,cg=0,cb=0,cn=0;
+  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
+    const nx=cx+dx,ny=cy+dy;
     if (nx<0||nx>=OW||ny<0||ny>=OH) continue;
-    const i=(ny*OW+nx)*4;
-    cr+=data[i]; cg+=data[i+1]; cb+=data[i+2]; cn++;
+    const i=(ny*OW+nx)*4; cr+=data[i]; cg+=data[i+1]; cb+=data[i+2]; cn++;
   }
   if (!cn) return null;
   cr/=cn; cg/=cn; cb/=cn;
 
-  const RAYS = 20;
-  const radii = [];
-  for (let i=0; i<RAYS; i++) {
-    const angle = (i/RAYS)*Math.PI*2;
-    const dx = Math.cos(angle), dy = Math.sin(angle);
-    let edgeD = maxR;
-    for (let d=1.5; d<=maxR; d+=0.5) {
+  const RAYS=24;
+  const radii=[];
+  for (let i=0;i<RAYS;i++) {
+    const angle=(i/RAYS)*Math.PI*2, dx=Math.cos(angle), dy=Math.sin(angle);
+    let edgeD=maxR;
+    for (let d=1.5;d<=maxR;d+=0.4) {
       const nx=Math.round(ox+dx*d), ny=Math.round(oy+dy*d);
       if (nx<0||nx>=OW||ny<0||ny>=OH) { edgeD=d; break; }
       const idx=(ny*OW+nx)*4;
       const dist=Math.sqrt((data[idx]-cr)**2+(data[idx+1]-cg)**2+(data[idx+2]-cb)**2);
-      if (dist>42) { edgeD=d; break; }
+      if (dist>40) { edgeD=d; break; }
     }
     radii.push(edgeD);
   }
 
-  const sorted = [...radii].sort((a,b)=>a-b);
-  const medR = sorted[Math.floor(RAYS/2)];
-  const mean = radii.reduce((s,v)=>s+v,0)/RAYS;
-  const variance = radii.reduce((s,v)=>s+(v-mean)**2,0)/RAYS;
-  // Score: high median radius + low variance = large circular object
-  const score = medR > 1.5 ? medR / (1 + variance) : 0;
-
-  return { cx:ox, cy:oy, r:medR, score };
+  // Use lower-quartile median to avoid rays that escape through gaps
+  const sorted=[...radii].sort((a,b)=>a-b);
+  const medR=sorted[Math.floor(RAYS*0.40)]; // 40th percentile = tighter fit
+  const mean=radii.reduce((s,v)=>s+v,0)/RAYS;
+  const variance=radii.reduce((s,v)=>s+(v-mean)**2,0)/RAYS;
+  const score = medR>1.5 ? medR/(1+variance) : 0;
+  return {cx:ox,cy:oy,r:medR,score};
 }
 
-// ── Find best circular object near a screen tap ───────────────────────────
-// searchRadiusPx: how far from tap (in screen pixels) to search
-// Returns { x, y, r } in screen coords, or null
-function findNear(screenX, screenY, searchRadiusPx, maxRadiusPx) {
-  const data = captureFrame();
-
-  // Map screen → offscreen
-  const ox0 = (screenX / overlay.width)  * OW;
-  const oy0 = (screenY / overlay.height) * OH;
-  const searchOff = (searchRadiusPx / overlay.width) * OW;
-  const maxROff   = (maxRadiusPx    / overlay.width) * OW;
-
-  const STEP = Math.max(1.5, searchOff / 6);
-  let best = null;
-
-  for (let dy = -searchOff; dy <= searchOff; dy += STEP) {
-    for (let dx = -searchOff; dx <= searchOff; dx += STEP) {
-      if (Math.hypot(dx, dy) > searchOff) continue;
-      const ox = ox0+dx, oy = oy0+dy;
+// Grid search: find roundest object near screen point
+// Returns screen coords { x, y, r } or null
+function findNear(screenX, screenY, searchRadSc, maxRadSc) {
+  const data=captureFrame();
+  const {ox:ox0,oy:oy0}=s2o(screenX,screenY);
+  const searchOff=(searchRadSc/overlay.width)*OW;
+  const maxROff  =(maxRadSc   /overlay.width)*OW;
+  const STEP=Math.max(1.5,searchOff/7);
+  let best=null;
+  for (let dy=-searchOff;dy<=searchOff;dy+=STEP) {
+    for (let dx=-searchOff;dx<=searchOff;dx+=STEP) {
+      if (Math.hypot(dx,dy)>searchOff) continue;
+      const ox=ox0+dx,oy=oy0+dy;
       if (ox<1||ox>=OW-1||oy<1||oy>=OH-1) continue;
-      const res = detectAt(data, ox, oy, maxROff);
-      if (res && (!best || res.score > best.score)) best = res;
+      const res=detectAt(data,ox,oy,maxROff);
+      if (res&&(!best||res.score>best.score)) best=res;
     }
   }
-
-  if (!best || best.r < 1.5) return null;
-
-  // Convert back to screen coords
-  const sx = (best.cx / OW) * overlay.width;
-  const sy = (best.cy / OH) * overlay.height;
-  const sr = (best.r  / OW) * overlay.width;
-  return { x:sx, y:sy, r:sr };
+  if (!best||best.r<1.5) return null;
+  const {sx,sy}=o2s(best.cx,best.cy);
+  return {x:sx, y:sy, r:(best.r/OW)*overlay.width};
 }
 
-// ── Handle tap ────────────────────────────────────────────────────────────
-function handleTap(screenX, screenY) {
-  if (!running || state === 'done') return;
+// ── Animation loop ────────────────────────────────────────────────────────
+const EASE=0.18; // lower = slower collapse
+let animFrame=null;
 
-  // Ripple feedback
-  const ripple = document.createElement('div');
-  ripple.className = 'ripple';
-  ripple.style.color = state === 'hole' ? '#e8f54d' : '#72d472';
-  ripple.style.left = screenX+'px'; ripple.style.top = screenY+'px';
-  overlay.parentElement.appendChild(ripple);
-  setTimeout(()=>ripple.remove(), 520);
-
-  if (state === 'hole') {
-    // Hole: search a medium radius, expect a larger object
-    const found = findNear(screenX, screenY,
-      overlay.width * 0.22,   // search radius: ~22% of screen width
-      overlay.width * 0.35);  // max object radius
-    hole = found || { x:screenX, y:screenY, r:overlay.width*0.12 };
-    state = 'ball';
-    statusTxt.textContent = 'Now press near the ball';
-    tips.textContent = 'Press anywhere close to the ball';
-
-  } else {
-    // Ball: search wider, expect a smaller object
-    const found = findNear(screenX, screenY,
-      overlay.width * 0.28,   // search wider since ball is small
-      overlay.width * 0.18);  // max object radius (ball is smaller than hole)
-    ball = found || { x:screenX, y:screenY, r:overlay.width*0.06 };
-    state = 'done';
-    showResult();
+function animTick() {
+  let still=false;
+  for (const ring of rings) {
+    const dx=ring.targetX-ring.x, dy=ring.targetY-ring.y, dr=ring.targetR-ring.r;
+    if (Math.abs(dx)>0.3||Math.abs(dy)>0.3||Math.abs(dr)>0.3) {
+      ring.x+=dx*EASE; ring.y+=dy*EASE; ring.r+=dr*EASE;
+      still=true;
+    } else {
+      ring.x=ring.targetX; ring.y=ring.targetY; ring.r=ring.targetR;
+    }
   }
   redraw();
+  if (still) animFrame=requestAnimationFrame(animTick);
+  else animFrame=null;
+}
+
+function startAnim() {
+  if (!animFrame) animFrame=requestAnimationFrame(animTick);
+}
+
+// ── Tap handler ───────────────────────────────────────────────────────────
+function handleTap(screenX, screenY) {
+  if (!running || state==='done') return;
+
+  if (state==='hole') {
+    const found=findNear(screenX,screenY, overlay.width*0.24, overlay.width*0.32);
+    const hx=found?found.x:screenX, hy=found?found.y:screenY;
+    const hr=found?found.r:overlay.width*0.11;
+
+    // Collapse hole ring to detected position/size
+    rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr;
+    rings[0].snapped=true;
+
+    // Ball ring size derived from hole size × known ratio (more accurate than detecting)
+    const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+    rings[1].targetR=ballR;
+    rings[1].x=rings[0].x; rings[1].y=rings[0].y; // start at same spot before 2nd tap
+
+    startAnim();
+    state='ball';
+    statusTxt.textContent='Now press near the ball';
+    tips.textContent='Press anywhere close to the ball';
+
+  } else if (state==='ball') {
+    const holeR=rings[0].targetR;
+    const ballSearchR=overlay.width*0.26;
+    // Max detection radius = slightly larger than derived ball size
+    const found=findNear(screenX,screenY, ballSearchR, holeR*0.90);
+    const bx=found?found.x:screenX, by=found?found.y:screenY;
+    // Use derived ball radius (accurate) — only use detected center
+    const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
+
+    rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR;
+    rings[1].snapped=true;
+    startAnim();
+
+    state='done';
+    // Show result after animation settles
+    setTimeout(showResult, 300);
+  }
 }
 
 // ── Result ────────────────────────────────────────────────────────────────
 function showResult() {
-  const pxPerIn  = (hole.r * 2) / HOLE_DIA_IN;
-  const centerPx = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-  const edgePx   = Math.max(0, centerPx - hole.r - ball.r);
-  const inches   = edgePx / pxPerIn;
-  distEl.textContent = inches.toFixed(1) + ' in';
-  const isGimme = inches <= gimmeIn;
-  verdEl.textContent = isGimme ? 'Gimme ✓' : 'Putt it';
-  verdEl.className   = isGimme ? 'good' : 'bad';
-  statusTxt.textContent = `${inches.toFixed(1)}" from hole`;
-  tips.textContent = 'Press Measure Again for next putt';
+  const hx=rings[0].targetX, hy=rings[0].targetY, hr=rings[0].targetR;
+  const bx=rings[1].targetX, by=rings[1].targetY, br=rings[1].targetR;
+  const pxPerIn=(hr*2)/HOLE_DIA_IN;
+  const centerPx=Math.hypot(bx-hx,by-hy);
+  const edgePx=Math.max(0,centerPx-hr-br);
+  const inches=edgePx/pxPerIn;
+
+  distEl.textContent=inches.toFixed(1)+' in';
+  const isGimme=inches<=gimmeIn;
+  verdEl.textContent=isGimme?'Gimme ✓':'Putt it';
+  verdEl.className=isGimme?'good':'bad';
+  statusTxt.textContent=`${inches.toFixed(1)}" from hole`;
+  tips.textContent='Press Measure Again for next putt';
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────
-function drawRing(obj, color, label) {
-  ctx.beginPath(); ctx.arc(obj.x, obj.y, obj.r+5, 0, Math.PI*2);
-  ctx.strokeStyle = color+'45'; ctx.lineWidth=10; ctx.stroke();
+function drawRing(ring) {
+  const alpha=ring.snapped?'60':'30';
+  ctx.beginPath(); ctx.arc(ring.x,ring.y,ring.r+6,0,Math.PI*2);
+  ctx.strokeStyle=ring.color+alpha; ctx.lineWidth=10; ctx.stroke();
 
-  ctx.beginPath(); ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI*2);
-  ctx.strokeStyle = color; ctx.lineWidth=3.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(ring.x,ring.y,ring.r,0,Math.PI*2);
+  ctx.strokeStyle=ring.color; ctx.lineWidth=3.5;
+  if (!ring.snapped) ctx.setLineDash([7,5]);
+  ctx.stroke(); ctx.setLineDash([]);
 
-  ctx.strokeStyle=color; ctx.lineWidth=2;
+  ctx.strokeStyle=ring.color; ctx.lineWidth=2;
   ctx.beginPath();
-  ctx.moveTo(obj.x-12,obj.y); ctx.lineTo(obj.x+12,obj.y);
-  ctx.moveTo(obj.x,obj.y-12); ctx.lineTo(obj.x,obj.y+12);
+  ctx.moveTo(ring.x-12,ring.y); ctx.lineTo(ring.x+12,ring.y);
+  ctx.moveTo(ring.x,ring.y-12); ctx.lineTo(ring.x,ring.y+12);
   ctx.stroke();
 
   ctx.font='bold 14px "DM Mono",monospace';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  const lw=ctx.measureText(label).width+14, ly=obj.y-obj.r-18;
+  const lw=ctx.measureText(ring.label).width+14, ly=ring.y-ring.r-18;
   ctx.fillStyle='rgba(14,26,14,.88)';
-  ctx.beginPath(); ctx.roundRect(obj.x-lw/2,ly-12,lw,24,4); ctx.fill();
-  ctx.fillStyle=color; ctx.fillText(label,obj.x,ly);
-}
-
-// Crosshair hint showing where to press
-function drawHint(color) {
-  const cx=overlay.width/2, cy=overlay.height*0.44;
-  ctx.strokeStyle=color+'66'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
-  ctx.beginPath(); ctx.moveTo(cx-24,cy); ctx.lineTo(cx+24,cy); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx,cy-24); ctx.lineTo(cx,cy+24); ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.roundRect(ring.x-lw/2,ly-12,lw,24,4); ctx.fill();
+  ctx.fillStyle=ring.color; ctx.fillText(ring.label,ring.x,ly);
 }
 
 function redraw() {
   ctx.clearRect(0,0,overlay.width,overlay.height);
   if (!running) return;
-  if (state==='hole') { drawHint('#e8f54d'); return; }
-  if (hole) drawRing(hole,'#e8f54d','HOLE');
-  if (state==='ball') { drawHint('#72d472'); }
-  if (hole && ball) {
-    ctx.beginPath(); ctx.moveTo(hole.x,hole.y); ctx.lineTo(ball.x,ball.y);
+  if (rings[0].snapped && rings[1].snapped) {
+    ctx.beginPath(); ctx.moveTo(rings[0].x,rings[0].y); ctx.lineTo(rings[1].x,rings[1].y);
     ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
   }
-  if (ball) drawRing(ball,'#72d472','BALL');
+  // Draw hole first (behind ball)
+  if (state!=='hole') drawRing(rings[0]);
+  drawRing(rings[1]);
+  if (state==='hole') drawRing(rings[0]); // hole on top when selecting it
 }
 
 // ── Touch / mouse ─────────────────────────────────────────────────────────
-let tStart = null;
-overlay.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.changedTouches[0]; tStart={x:t.clientX,y:t.clientY}; },{passive:false});
-overlay.addEventListener('touchmove',  e=>{ e.preventDefault(); if(tStart){const t=e.changedTouches[0]; if(Math.hypot(t.clientX-tStart.x,t.clientY-tStart.y)>12) tStart=null;} },{passive:false});
-overlay.addEventListener('touchend',   e=>{ e.preventDefault(); if(tStart){const t=e.changedTouches[0]; handleTap(t.clientX,t.clientY);} tStart=null; },{passive:false});
-overlay.addEventListener('click', e=>handleTap(e.clientX,e.clientY));
+let tStart=null;
+overlay.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];tStart={x:t.clientX,y:t.clientY};},{passive:false});
+overlay.addEventListener('touchmove', e=>{e.preventDefault();if(tStart){const t=e.changedTouches[0];if(Math.hypot(t.clientX-tStart.x,t.clientY-tStart.y)>12)tStart=null;}},{passive:false});
+overlay.addEventListener('touchend',  e=>{e.preventDefault();if(tStart){const t=e.changedTouches[0];handleTap(t.clientX,t.clientY);}tStart=null;},{passive:false});
+overlay.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
 
 // ── Controls ──────────────────────────────────────────────────────────────
 document.querySelectorAll('.gimme-btn').forEach(b=>{
   b.addEventListener('click',()=>{
     document.querySelectorAll('.gimme-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active'); gimmeIn=parseInt(b.dataset.in);
-    if(state==='done') showResult(); redraw();
+    if(state==='done') showResult();
   });
 });
 
-document.getElementById('reset-btn').addEventListener('click',()=>{
-  state='hole'; hole=null; ball=null;
+function reset() {
+  state='hole';
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+  initRings();
   distEl.textContent='—'; verdEl.textContent=''; verdEl.className='';
   statusTxt.textContent='Press near the hole';
   tips.textContent='Press anywhere close to the hole';
   redraw();
-});
-
-function syncCanvas() {
-  const r=overlay.parentElement.getBoundingClientRect();
-  overlay.width=r.width; overlay.height=r.height;
 }
-window.addEventListener('resize',()=>{ syncCanvas(); redraw(); });
+
+document.getElementById('reset-btn').addEventListener('click',reset);
+window.addEventListener('resize',()=>{syncCanvas();reset();});
 
 document.getElementById('btn-start').addEventListener('click',async()=>{
   document.getElementById('cam-start').style.display='none';
@@ -341,10 +371,7 @@ document.getElementById('btn-start').addEventListener('click',async()=>{
     const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}}});
     video.srcObject=stream;
     video.addEventListener('loadedmetadata',()=>{
-      syncCanvas(); running=true;
-      statusTxt.textContent='Press near the hole';
-      tips.textContent='Press anywhere close to the hole';
-      redraw();
+      syncCanvas(); running=true; reset();
     });
   } catch { document.getElementById('cam-denied').classList.add('show'); }
 });
