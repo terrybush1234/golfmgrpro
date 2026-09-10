@@ -63,7 +63,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Press <span style="color:#e8f54d">near the hole</span>, then press <span style="color:#72d472">near the ball</span>. Each ring collapses to fit automatically.</p>
+    <p>Frame the shot with the <span style="color:#e8f54d">hole on the left</span> and <span style="color:#72d472">ball on the right</span>, then press Capture.</p>
     <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
@@ -89,6 +89,7 @@ video { width:100%; height:100%; object-fit:cover; display:block; }
     <div id="verdict"></div>
   </div>
   <div id="tips"></div>
+  <button id="capture-btn" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;background:#e8f54d;color:#0e1a0e;border:none;border-radius:8px;padding:14px 0;cursor:pointer;width:100%;letter-spacing:.07em;text-transform:uppercase;-webkit-tap-highlight-color:transparent;">Capture</button>
   <button id="reset-btn">Measure Again</button>
 </div>
 
@@ -105,7 +106,7 @@ const verdEl    = document.getElementById('verdict');
 const tips      = document.getElementById('tips');
 
 let gimmeIn = 24, running = false;
-let state = 'hole'; // 'hole' | 'ball' | 'done'
+let state = 'ready'; // 'ready' | 'done'
 
 // Animated ring state
 // Each ring: { x, y, r, targetX, targetY, targetR, snapped, color, label }
@@ -118,12 +119,12 @@ function syncCanvas() {
 
 function initRings() {
   const W = overlay.width, H = overlay.height;
-  const bigR  = Math.round(W * 0.26); // large ring for hole
-  const smlR  = Math.round(W * 0.16); // smaller ring for ball
+  const bigR = Math.round(W * 0.20);
+  const smlR = Math.round(W * 0.12);
   rings = [
-    { x:W*0.50, y:H*0.42, r:bigR, targetX:W*0.50, targetY:H*0.42, targetR:bigR,
+    { x:W*0.28, y:H*0.42, r:bigR, targetX:W*0.28, targetY:H*0.42, targetR:bigR,
       snapped:false, color:'#e8f54d', label:'HOLE' },
-    { x:W*0.50, y:H*0.42, r:smlR, targetX:W*0.50, targetY:H*0.42, targetR:smlR,
+    { x:W*0.72, y:H*0.42, r:smlR, targetX:W*0.72, targetY:H*0.42, targetR:smlR,
       snapped:false, color:'#72d472', label:'BALL' },
   ];
 }
@@ -251,53 +252,6 @@ function startAnim() {
   if (!animFrame) animFrame=requestAnimationFrame(animTick);
 }
 
-// ── Tap marker ────────────────────────────────────────────────────────────
-let tapMarker = null; // { x, y, age } shown briefly at tap point
-
-// ── Tap handler ───────────────────────────────────────────────────────────
-function handleTap(screenX, screenY) {
-  if (!running || state==='done') return;
-
-  // Show crosshair at exact tap location
-  tapMarker = { x:screenX, y:screenY };
-  setTimeout(()=>{ tapMarker=null; redraw(); }, 800);
-
-  if (state==='hole') {
-    // Hole = dark circle — search for darkest seed, then ray-find its edge
-    const found=findObject(screenX,screenY, overlay.width*0.18, overlay.width*0.28, 'dark');
-    const hx=found?found.x:screenX, hy=found?found.y:screenY;
-    const hr=found?found.r:overlay.width*0.11;
-
-    rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr;
-    rings[0].snapped=true;
-
-    const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
-    rings[1].x=screenX; rings[1].y=screenY;
-    rings[1].targetX=screenX; rings[1].targetY=screenY;
-    rings[1].targetR=ballR;
-
-    startAnim();
-    state='ball';
-    statusTxt.textContent='Now press near the ball';
-    tips.textContent='Press anywhere close to the ball';
-
-  } else if (state==='ball') {
-    const holeR=rings[0].targetR;
-    // Ball = bright white circle — search for brightest seed, then ray-find its edge
-    const found=findObject(screenX,screenY, overlay.width*0.18, holeR*0.90, 'bright');
-    const bx=found?found.x:screenX, by=found?found.y:screenY;
-    const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
-
-    rings[1].x=screenX; rings[1].y=screenY;
-    rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR;
-    rings[1].snapped=true;
-    startAnim();
-
-    state='done';
-    // Show result after animation settles
-    setTimeout(showResult, 300);
-  }
-}
 
 // ── Result ────────────────────────────────────────────────────────────────
 function showResult() {
@@ -314,6 +268,7 @@ function showResult() {
   verdEl.className=isGimme?'good':'bad';
   statusTxt.textContent=`${inches.toFixed(1)}" from hole`;
   tips.textContent='Press Measure Again for next putt';
+  document.getElementById('capture-btn').style.display='none';
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────
@@ -349,31 +304,46 @@ function redraw() {
     ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
   }
-  // Draw tap marker crosshair
-  if (tapMarker) {
-    const {x,y}=tapMarker; const sz=18;
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(x-sz,y); ctx.lineTo(x+sz,y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x,y-sz); ctx.lineTo(x,y+sz); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fill();
-    ctx.restore();
-  }
-  // Draw hole first (behind ball)
-  if (state!=='hole') drawRing(rings[0]);
+
+  // Draw both guide rings
+  drawRing(rings[0]);
   drawRing(rings[1]);
-  if (state==='hole') drawRing(rings[0]); // hole on top when selecting it
+  // Dividing line guide
+  if (state==='ready') {
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+    ctx.setLineDash([6,6]);
+    ctx.beginPath(); ctx.moveTo(overlay.width/2,0); ctx.lineTo(overlay.width/2,overlay.height);
+    ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+  }
 }
 
-// ── Touch / mouse ─────────────────────────────────────────────────────────
-let tStart=null;
-overlay.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];tStart={x:t.clientX,y:t.clientY};},{passive:false});
-overlay.addEventListener('touchmove', e=>{e.preventDefault();if(tStart){const t=e.changedTouches[0];if(Math.hypot(t.clientX-tStart.x,t.clientY-tStart.y)>12)tStart=null;}},{passive:false});
-overlay.addEventListener('touchend',  e=>{e.preventDefault();if(tStart){const t=e.changedTouches[0];handleTap(t.clientX,t.clientY);}tStart=null;},{passive:false});
-overlay.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
+// ── Capture ───────────────────────────────────────────────────────────────
+function doCapture() {
+  if (!running || state==='done') return;
+  statusTxt.textContent='Detecting…';
+
+  // Scan left half for hole (darkest circle), right half for ball (brightest circle)
+  const W=overlay.width, H=overlay.height;
+  const holeFound = findObject(W*0.25, H*0.50, W*0.24, W*0.28, 'dark');
+  const ballFound  = findObject(W*0.75, H*0.50, W*0.24, W*0.20, 'bright');
+
+  const hx=holeFound?holeFound.x:W*0.28, hy=holeFound?holeFound.y:H*0.42;
+  const hr=holeFound?holeFound.r:W*0.11;
+  const bx=ballFound?ballFound.x:W*0.72,  by=ballFound?ballFound.y:H*0.42;
+  const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+
+  rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr; rings[0].snapped=true;
+  rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR; rings[1].snapped=true;
+  startAnim();
+
+  state='done';
+  setTimeout(showResult, 350);
+}
 
 // ── Controls ──────────────────────────────────────────────────────────────
+document.getElementById('capture-btn').addEventListener('click', doCapture);
+
 document.querySelectorAll('.gimme-btn').forEach(b=>{
   b.addEventListener('click',()=>{
     document.querySelectorAll('.gimme-btn').forEach(x=>x.classList.remove('active'));
@@ -383,12 +353,13 @@ document.querySelectorAll('.gimme-btn').forEach(b=>{
 });
 
 function reset() {
-  state='hole';
+  state='ready';
   if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
   initRings();
   distEl.textContent='—'; verdEl.textContent=''; verdEl.className='';
-  statusTxt.textContent='Press near the hole';
-  tips.textContent='Press anywhere close to the hole';
+  statusTxt.textContent='Frame hole left · ball right';
+  tips.textContent='Then press Capture';
+  document.getElementById('capture-btn').style.display='';
   redraw();
 }
 
