@@ -49,7 +49,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gimme-btn.active { background: #243824; color: #e8f54d; border-color: #e8f54d; }
 
 #status-row { display: flex; align-items: center; gap: 10px; }
-#status-dot { width: 12px; height: 12px; border-radius: 50%; background: #4a6a4a; flex-shrink: 0; transition: background 0.3s; }
+#status-dot { width: 12px; height: 12px; border-radius: 50%; background: #4a6a4a; flex-shrink: 0; }
 #status-dot.searching { background: #e8a020; animation: pulse 1s ease-in-out infinite; }
 #status-dot.locked    { background: #72d472; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -97,7 +97,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
     <div id="distance">—</div>
     <div id="verdict" class="none"></div>
   </div>
-  <div id="tips">Point camera down · Hole = dark circle · Ball = white</div>
+  <div id="tips">Point camera down · Works with any ball color</div>
 </div>
 
 <script>
@@ -113,6 +113,7 @@ const tips       = document.getElementById('tips');
 const HOLE_DIA_IN = 4.25;
 let gimmeIn = 24, running = false;
 
+// Small analysis canvas — fast pixel reads
 const W = 160, H = 120;
 const off = document.createElement('canvas');
 off.width = W; off.height = H;
@@ -143,16 +144,15 @@ function syncCanvas() {
   overlay.width = r.width; overlay.height = r.height;
 }
 
-// ── Cluster helper ───────────────────────────────────────
+// ── Cluster: prune outliers, return centroid + area-based radius ──────────
 function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   if (pixels.length < minCount) return null;
   let sx=0, sy=0;
   for (const [x,y] of pixels) { sx+=x; sy+=y; }
-  let cx=sx/pixels.length, cy=sy/pixels.length;
-  let pts = pixels;
+  let cx=sx/pixels.length, cy=sy/pixels.length, pts=pixels;
   for (let i=0; i<2; i++) {
     const re = Math.sqrt(pts.length / Math.PI);
-    pts = pts.filter(([x,y]) => Math.hypot(x-cx, y-cy) < re*2.5);
+    pts = pts.filter(([x,y]) => Math.hypot(x-cx,y-cy) < re*2.5);
     if (pts.length < minCount) return null;
     sx=0; sy=0;
     for (const [x,y] of pts) { sx+=x; sy+=y; }
@@ -163,104 +163,139 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   return { cx, cy, rad };
 }
 
-// ── Analysis ─────────────────────────────────────────────
+// ── Main analysis ─────────────────────────────────────────────────────────
 function analyze() {
   offCtx.drawImage(video, 0, 0, W, H);
   const data = offCtx.getImageData(0, 0, W, H).data;
-  const darkPx = [], whitePx = [];
+
+  // ── Pass 1: sample grass color from the majority of pixels ───────────
+  // Grass is greenish (g > r, g > b) and medium brightness.
+  // We collect a rough median to adapt to lighting conditions.
+  let gR=0, gG=0, gB=0, gN=0;
+  for (let i=0; i<data.length; i+=4) {
+    const r=data[i], g=data[i+1], b=data[i+2];
+    // Green-biased pixels: green channel leads, medium brightness
+    if (g > r*1.05 && g > b*1.05 && g > 30 && g < 230) {
+      gR+=r; gG+=g; gB+=b; gN++;
+    }
+  }
+  // Fallback grass color if frame has too little green (sand trap, etc.)
+  const grassR = gN > 100 ? gR/gN : 80;
+  const grassG = gN > 100 ? gG/gN : 120;
+  const grassB = gN > 100 ? gB/gN : 60;
+
+  // ── Pass 2: classify each pixel ───────────────────────────────────────
+  const holePx = [], ballPx = [];
 
   for (let y=0; y<H; y++) {
     for (let x=0; x<W; x++) {
       const i = (y*W+x)*4;
       const r=data[i], g=data[i+1], b=data[i+2];
       const luma = 0.299*r + 0.587*g + 0.114*b;
-      const sat  = Math.max(r,g,b) - Math.min(r,g,b);
-      // Hole: dark and not green-tinted (grass shadows are green)
-      if (luma < 75 && (g - Math.min(r,b)) < 30) darkPx.push([x,y]);
-      // Ball: bright white, low saturation
-      if (luma > 165 && sat < 60) whitePx.push([x,y]);
+
+      // ── HOLE: always the darkest thing in frame ───────────────────────
+      // A depression casts shadow regardless of lighting or grass color.
+      // Exclude green-tinted pixels (grass shadow, not hole).
+      if (luma < 70 && (g - Math.min(r,b)) < 25) {
+        holePx.push([x, y]);
+      }
+
+      // ── BALL: most different from grass, but brighter than a shadow ───
+      // Color distance from grass median in RGB space.
+      // Any colored ball (white, yellow, red, orange, pink) will be
+      // far from green grass in color space AND brighter than the hole.
+      const dr = r - grassR, dg = g - grassG, db = b - grassB;
+      const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
+
+      // Must be meaningfully different from grass AND not dark (not the hole)
+      if (colorDist > 55 && luma > 80) {
+        ballPx.push([x, y]);
+      }
     }
   }
 
-  const sx = overlay.width / W, sy = overlay.height / H, sc = (sx+sy)/2;
+  const sx=overlay.width/W, sy=overlay.height/H, sc=(sx+sy)/2;
   let hole=null, ball=null;
 
-  const hc = clusterPx(darkPx,  8, 2, 0.45);
+  const hc = clusterPx(holePx, 6, 2, 0.45);
   if (hc) hole = { x: hc.cx*sx, y: hc.cy*sy, r: Math.max(8, hc.rad*sc) };
 
-  const bc = clusterPx(whitePx, 5, 2, 0.42);
+  const bc = clusterPx(ballPx, 5, 2, 0.35);
   if (bc) ball = { x: bc.cx*sx, y: bc.cy*sy, r: Math.max(10, bc.rad*sc) };
+
+  // If hole and ball centroids are too close, they're the same object — discard ball
+  if (hole && ball && Math.hypot(ball.x-hole.x, ball.y-hole.y) < hole.r * 1.5) {
+    ball = null;
+  }
 
   return { hole, ball };
 }
 
-// ── Draw helpers ─────────────────────────────────────────
+// ── Draw helpers ──────────────────────────────────────────────────────────
 function ring(cx, cy, r, col) {
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke();
 }
 function cross(cx, cy, s, col) {
-  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.strokeStyle=col; ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(cx-s,cy); ctx.lineTo(cx+s,cy);
   ctx.moveTo(cx,cy-s); ctx.lineTo(cx,cy+s);
   ctx.stroke();
 }
-function dashedLine(ax, ay, bx, by) {
+function dashedLine(ax,ay,bx,by) {
   ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
-  ctx.strokeStyle = '#72d472'; ctx.lineWidth = 2.5;
+  ctx.strokeStyle='#72d472'; ctx.lineWidth=2.5;
   ctx.setLineDash([8,5]); ctx.stroke(); ctx.setLineDash([]);
 }
-function badge(txt, x, y, col) {
-  ctx.font = 'bold 13px "DM Mono",monospace';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(txt).width + 12;
-  ctx.fillStyle = 'rgba(14,26,14,0.85)';
-  ctx.beginPath(); ctx.roundRect(x-w/2, y-11, w, 22, 3); ctx.fill();
-  ctx.fillStyle = col; ctx.fillText(txt, x, y);
+function badge(txt,x,y,col) {
+  ctx.font='bold 13px "DM Mono",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const w=ctx.measureText(txt).width+12;
+  ctx.fillStyle='rgba(14,26,14,0.85)';
+  ctx.beginPath(); ctx.roundRect(x-w/2,y-11,w,22,3); ctx.fill();
+  ctx.fillStyle=col; ctx.fillText(txt,x,y);
 }
 
-// ── Main loop ────────────────────────────────────────────
-let frameCount = 0;
+// ── Render loop ───────────────────────────────────────────────────────────
+let frameCount=0;
 function loop() {
   if (!running) return;
   requestAnimationFrame(loop);
   if (++frameCount % 3 !== 0 || !video.videoWidth) return;
 
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.clearRect(0,0,overlay.width,overlay.height);
   const { hole, ball } = analyze();
 
   if (hole) {
-    ring(hole.x, hole.y, hole.r, 'rgba(232,245,77,0.75)');
-    cross(hole.x, hole.y, 7, '#e8f54d');
-    badge('HOLE', hole.x, hole.y - hole.r - 14, '#e8f54d');
+    ring(hole.x,hole.y,hole.r,'rgba(232,245,77,0.75)');
+    cross(hole.x,hole.y,7,'#e8f54d');
+    badge('HOLE',hole.x,hole.y-hole.r-14,'#e8f54d');
   }
   if (ball) {
-    ring(ball.x, ball.y, ball.r, 'rgba(114,212,114,0.75)');
-    cross(ball.x, ball.y, 6, '#72d472');
-    badge('BALL', ball.x, ball.y - ball.r - 14, '#72d472');
+    ring(ball.x,ball.y,ball.r,'rgba(114,212,114,0.75)');
+    cross(ball.x,ball.y,6,'#72d472');
+    badge('BALL',ball.x,ball.y-ball.r-14,'#72d472');
   }
 
   if (hole && ball) {
-    const pxPerIn = (hole.r * 2) / HOLE_DIA_IN;
+    const pxPerIn = (hole.r*2) / HOLE_DIA_IN;
     const inches  = Math.hypot(ball.x-hole.x, ball.y-hole.y) / pxPerIn;
-    dashedLine(hole.x, hole.y, ball.x, ball.y);
-    badge(inches.toFixed(1)+'"', (hole.x+ball.x)/2, (hole.y+ball.y)/2 - 14, '#72d472');
+    dashedLine(hole.x,hole.y,ball.x,ball.y);
+    badge(inches.toFixed(1)+'"',(hole.x+ball.x)/2,(hole.y+ball.y)/2-14,'#72d472');
 
-    distEl.textContent = inches.toFixed(1) + ' in';
-    if (inches <= gimmeIn) { verdEl.textContent='Gimme ✓'; verdEl.className='good'; }
-    else                   { verdEl.textContent='Putt it'; verdEl.className='bad'; }
-    statusDot.className = 'locked';
-    statusText.textContent = 'Locked on hole and ball';
-    tips.style.display = 'none';
+    distEl.textContent = inches.toFixed(1)+' in';
+    verdEl.textContent = inches<=gimmeIn ? 'Gimme ✓' : 'Putt it';
+    verdEl.className   = inches<=gimmeIn ? 'good' : 'bad';
+    statusDot.className='locked';
+    statusText.textContent='Locked on hole and ball';
+    tips.style.display='none';
   } else {
-    distEl.textContent = '—';
-    verdEl.textContent = ''; verdEl.className = 'none';
-    statusDot.className = 'searching';
-    tips.style.display = '';
-    if (!hole && !ball) statusText.textContent = 'Looking for hole and ball…';
-    else if (!hole)     statusText.textContent = 'Ball found — looking for hole…';
-    else                statusText.textContent = 'Hole found — looking for ball…';
+    distEl.textContent='—'; verdEl.textContent=''; verdEl.className='none';
+    statusDot.className='searching'; tips.style.display='';
+    if (!hole&&!ball)  statusText.textContent='Looking for hole and ball…';
+    else if (!hole)    statusText.textContent='Ball found — looking for hole…';
+    else               statusText.textContent='Hole found — looking for ball…';
   }
 }
 </script>
