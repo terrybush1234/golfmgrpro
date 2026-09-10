@@ -238,23 +238,31 @@ function startAnim() {
   if (!animFrame) animFrame=requestAnimationFrame(animTick);
 }
 
+// ── Tap marker ────────────────────────────────────────────────────────────
+let tapMarker = null; // { x, y, age } shown briefly at tap point
+
 // ── Tap handler ───────────────────────────────────────────────────────────
 function handleTap(screenX, screenY) {
   if (!running || state==='done') return;
 
+  // Show crosshair at exact tap location
+  tapMarker = { x:screenX, y:screenY };
+  setTimeout(()=>{ tapMarker=null; redraw(); }, 800);
+
   if (state==='hole') {
-    const found=findNear(screenX,screenY, overlay.width*0.24, overlay.width*0.32);
+    // Tighter search — don't drift more than ~12% of screen width from tap
+    const found=findNear(screenX,screenY, overlay.width*0.12, overlay.width*0.28);
     const hx=found?found.x:screenX, hy=found?found.y:screenY;
     const hr=found?found.r:overlay.width*0.11;
 
-    // Collapse hole ring to detected position/size
     rings[0].targetX=hx; rings[0].targetY=hy; rings[0].targetR=hr;
     rings[0].snapped=true;
 
-    // Ball ring size derived from hole size × known ratio (more accurate than detecting)
+    // Ball ring starts at TAP location (separate from hole), collapses on 2nd tap
     const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
+    rings[1].x=screenX; rings[1].y=screenY; // positioned at tap, not hole
+    rings[1].targetX=screenX; rings[1].targetY=screenY;
     rings[1].targetR=ballR;
-    rings[1].x=rings[0].x; rings[1].y=rings[0].y; // start at same spot before 2nd tap
 
     startAnim();
     state='ball';
@@ -263,13 +271,14 @@ function handleTap(screenX, screenY) {
 
   } else if (state==='ball') {
     const holeR=rings[0].targetR;
-    const ballSearchR=overlay.width*0.26;
-    // Max detection radius = slightly larger than derived ball size
+    // Tight search — stay close to where user pressed
+    const ballSearchR=overlay.width*0.13;
     const found=findNear(screenX,screenY, ballSearchR, holeR*0.90);
     const bx=found?found.x:screenX, by=found?found.y:screenY;
-    // Use derived ball radius (accurate) — only use detected center
     const ballR=holeR*(BALL_DIA_IN/HOLE_DIA_IN);
 
+    // Start ring at tap location, animate to detected center
+    rings[1].x=screenX; rings[1].y=screenY;
     rings[1].targetX=bx; rings[1].targetY=by; rings[1].targetR=ballR;
     rings[1].snapped=true;
     startAnim();
@@ -329,6 +338,17 @@ function redraw() {
     ctx.beginPath(); ctx.moveTo(rings[0].x,rings[0].y); ctx.lineTo(rings[1].x,rings[1].y);
     ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // Draw tap marker crosshair
+  if (tapMarker) {
+    const {x,y}=tapMarker; const sz=18;
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x-sz,y); ctx.lineTo(x+sz,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y-sz); ctx.lineTo(x,y+sz); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fill();
+    ctx.restore();
   }
   // Draw hole first (behind ball)
   if (state!=='hole') drawRing(rings[0]);
