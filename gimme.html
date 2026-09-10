@@ -274,7 +274,10 @@ function handleTap(x, y) {
 // ── Show result ───────────────────────────────────────────────────────────
 function showResult() {
   const pxPerIn = (hole.r * 2) / HOLE_DIA_IN;
-  const inches  = Math.hypot(ball.x - hole.x, ball.y - hole.y) / pxPerIn;
+  const centerPx = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+  // Edge-to-edge: subtract hole radius and ball radius from center-to-center
+  const edgePx  = Math.max(0, centerPx - hole.r - ball.r);
+  const inches   = edgePx / pxPerIn;
   distEl.textContent = inches.toFixed(1) + ' in';
   const isGimme = inches <= gimmeIn;
   verdEl.textContent = isGimme ? 'Gimme ✓' : 'Putt it';
