@@ -4,7 +4,6 @@
 
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
 body {
   height: 100dvh; overflow: hidden;
   background: #0e1a0e; color: #dff0df;
@@ -12,19 +11,9 @@ body {
   -webkit-font-smoothing: antialiased;
   display: flex; flex-direction: column;
 }
-
-#cam-wrap {
-  position: relative; flex: 1; min-height: 0;
-  background: #000; overflow: hidden;
-}
-
+#cam-wrap { position: relative; flex: 1; min-height: 0; background: #000; overflow: hidden; }
 video { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-#overlay {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  touch-action: none; cursor: crosshair;
-}
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Start screen */
 #cam-start {
@@ -33,98 +22,54 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
   gap: 20px; background: #0e1a0e; padding: 32px; text-align: center;
 }
 #cam-start h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 700; }
-#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
+#cam-start p  { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
 #cam-start button {
   font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
   letter-spacing: 0.07em; text-transform: uppercase;
   background: #e8f54d; color: #0e1a0e;
   border: none; border-radius: 8px; padding: 16px 40px; cursor: pointer;
 }
-
-/* Denied */
-#cam-denied {
-  display: none; position: absolute; inset: 0;
-  flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; background: #0e1a0e; padding: 32px; text-align: center;
-}
+#cam-denied { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: #0e1a0e; padding: 32px; text-align: center; }
 #cam-denied.show { display: flex; }
-#cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 600; }
-#cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; color: #7a9a7a; max-width: 280px; line-height: 1.45; }
-#cam-denied button {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
-  background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 14px 32px; cursor: pointer;
-}
+#cam-denied h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 600; }
+#cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
+#cam-denied button { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 12px 28px; cursor: pointer; }
 
 /* Panel */
 #panel {
-  background: #0e1a0e; border-top: 2px solid #243824;
-  padding: 16px 18px 20px; flex-shrink: 0;
+  background: #0e1a0e; border-top: 2px solid #1e321e;
+  padding: 14px 18px 18px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 12px;
 }
 
-/* Step dots */
-.step-dots { display: flex; align-items: center; gap: 8px; }
-.sdot { width: 10px; height: 10px; border-radius: 50%; background: #2c422c; transition: background 0.2s, transform 0.18s; }
-.sdot.active { background: #e8f54d; transform: scale(1.3); }
-.sdot.done   { background: #72d472; }
-.ssep { width: 24px; height: 1px; background: #2c422c; }
-
-/* Instruction */
-.eyebrow {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600;
-  letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a;
-}
-.instr {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 600;
-  color: #dff0df; line-height: 1.2;
-}
-
-/* Gimme distance picker */
-#gimme-row {
-  display: flex; gap: 8px; flex-wrap: wrap;
-}
+/* Gimme selector */
+#gimme-row { display: flex; gap: 8px; }
 .gimme-btn {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
-  letter-spacing: 0.04em;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
   background: #1c2e1c; color: #7a9a7a;
   border: 2px solid #2c422c; border-radius: 6px;
-  padding: 8px 14px; cursor: pointer; flex: 1;
+  padding: 8px 0; cursor: pointer; flex: 1;
   transition: all 0.15s; -webkit-tap-highlight-color: transparent;
 }
 .gimme-btn.active { background: #243824; color: #e8f54d; border-color: #e8f54d; }
 
-/* Size slider */
-#size-pane { display: flex; flex-direction: column; gap: 8px; }
-#size-label {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700;
-  color: #e8f54d; letter-spacing: 0.04em;
-}
-#size-slider {
-  width: 100%; height: 32px;
-  accent-color: #e8f54d; cursor: pointer;
-}
+/* Status + distance */
+#status-row { display: flex; align-items: center; gap: 10px; }
+#status-dot { width: 12px; height: 12px; border-radius: 50%; background: #4a6a4a; flex-shrink: 0; transition: background 0.3s; }
+#status-dot.searching { background: #e8a020; animation: pulse 1s ease-in-out infinite; }
+#status-dot.locked    { background: #72d472; animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+#status-text { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; }
 
-/* Result */
-#result-pane { display: none; flex-direction: column; gap: 4px; }
-#result-pane.show { display: flex; }
-.rlabel { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: #7a9a7a; }
-#distance { font-size: 60px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: #e8f54d; }
-#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+#distance-row { display: flex; align-items: baseline; gap: 10px; }
+#distance { font-size: 64px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: #e8f54d; }
+#verdict { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 #verdict.good { color: #72d472; }
 #verdict.bad  { color: #e06060; }
+#verdict.none { color: #4a6a4a; }
 
-/* Buttons */
-#btn-row { display: flex; gap: 10px; }
-button.action {
-  font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  border: none; border-radius: 6px; padding: 12px 20px; cursor: pointer;
-  transition: opacity 0.12s; -webkit-tap-highlight-color: transparent;
-}
-button.action:hover { opacity: 0.8; }
-#btn-again { flex: 1; background: #243824; color: #dff0df; }
-#btn-reset { background: #1c2e1c; color: #7a9a7a; }
-.hidden { display: none !important; }
+/* Tips */
+#tips { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: #4a6a4a; line-height: 1.3; }
 </style>
 
 <div id="cam-wrap">
@@ -132,8 +77,8 @@ button.action:hover { opacity: 0.8; }
   <canvas id="overlay"></canvas>
   <div id="cam-start">
     <h2>Gimme Check</h2>
-    <p>Point camera at the hole and ball to measure distance.</p>
-    <button id="btn-start-cam">Start Camera</button>
+    <p>Point camera straight down at the hole and ball. Distance appears automatically.</p>
+    <button id="btn-start">Start Camera</button>
   </div>
   <div id="cam-denied">
     <h2>Camera blocked</h2>
@@ -143,15 +88,8 @@ button.action:hover { opacity: 0.8; }
 </div>
 
 <div id="panel">
-  <div class="step-dots">
-    <div class="sdot" id="sd0"></div>
-    <div class="ssep"></div>
-    <div class="sdot" id="sd1"></div>
-  </div>
-
-  <!-- Gimme distance selector (always visible) -->
   <div>
-    <div class="eyebrow" style="margin-bottom:6px;">Gimme distance</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#7a9a7a;margin-bottom:6px;">Gimme distance</div>
     <div id="gimme-row">
       <button class="gimme-btn" data-in="12">12"</button>
       <button class="gimme-btn" data-in="18">18"</button>
@@ -160,268 +98,225 @@ button.action:hover { opacity: 0.8; }
     </div>
   </div>
 
-  <!-- Instruction (hole + ball phases) -->
-  <div id="info-pane">
-    <div class="eyebrow" id="eyebrow">Step 1 — Find the hole</div>
-    <div class="instr" id="instr">Tap the center of the hole</div>
+  <div id="status-row">
+    <div id="status-dot"></div>
+    <div id="status-text">Start camera to begin</div>
   </div>
 
-  <!-- Size adjuster (ball phase only) -->
-  <div id="size-pane" class="hidden">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;color:#7a9a7a;margin-bottom:6px;letter-spacing:0.08em;text-transform:uppercase;">Adjust hole circle</div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button class="action" id="btn-smaller" style="flex:1;font-size:28px;padding:10px;background:#1c2e1c;color:#dff0df;">−</button>
-      <span id="size-val" style="font-family:'DM Mono',monospace;font-size:20px;color:#e8f54d;min-width:44px;text-align:center;">1.0x</span>
-      <button class="action" id="btn-larger"  style="flex:1;font-size:28px;padding:10px;background:#1c2e1c;color:#dff0df;">+</button>
-    </div>
-  </div>
-
-  <!-- Result -->
-  <div id="result-pane">
-    <div class="rlabel">Distance to hole</div>
+  <div id="distance-row">
     <div id="distance">—</div>
-    <div id="verdict"></div>
+    <div id="verdict" class="none"></div>
   </div>
 
-  <!-- Buttons -->
-  <div id="btn-row">
-    <button class="action" id="btn-again">Measure Again</button>
-    <button class="action hidden" id="btn-reset">Reset Hole</button>
-  </div>
+  <div id="tips">Point camera straight down · Hole = dark circle · Ball = white</div>
 </div>
 
 <script>
-const video    = document.getElementById('video');
-const overlay  = document.getElementById('overlay');
-const ctx      = overlay.getContext('2d');
-const camStart = document.getElementById('cam-start');
-const denied   = document.getElementById('cam-denied');
-const eyebrow  = document.getElementById('eyebrow');
-const instr    = document.getElementById('instr');
-const infoPane = document.getElementById('info-pane');
-const sizePane = document.getElementById('size-pane');
-const sizeSlider = document.getElementById('size-slider');
-const resPane  = document.getElementById('result-pane');
-const distEl   = document.getElementById('distance');
-const verdEl   = document.getElementById('verdict');
-const btnAgain = document.getElementById('btn-again');
-const btnReset = document.getElementById('btn-reset');
-const dots     = [document.getElementById('sd0'), document.getElementById('sd1')];
+const video   = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const ctx     = overlay.getContext('2d');
+const denied  = document.getElementById('cam-denied');
+const camStart= document.getElementById('cam-start');
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const distEl  = document.getElementById('distance');
+const verdEl  = document.getElementById('verdict');
+const tips    = document.getElementById('tips');
 
-const HOLE_DIA_IN  = 4.25;
-const NUM_RAYS     = 24;
-const COLOR_THRESH = 45;
-const MIN_RADIUS   = 8;
-
+const HOLE_DIA_IN = 4.25;
 let gimmeIn = 24;
-document.querySelectorAll('.gimme-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.gimme-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    gimmeIn = parseInt(btn.dataset.in);
-    if (phase === 'result' && ballPt) showResult(dist(holeCenter, ballPt) / pxPerIn);
+let running = false;
+let animId  = null;
+
+// Small offscreen canvas for fast pixel analysis
+const W = 160, H = 120;
+const off = document.createElement('canvas');
+off.width = W; off.height = H;
+const offCtx = off.getContext('2d', { willReadFrequently: true });
+
+document.querySelectorAll('.gimme-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.gimme-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    gimmeIn = parseInt(b.dataset.in);
   });
 });
 
-const offscreen = document.createElement('canvas');
-const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
-
-let phase = 'hole';
-let holeCenter = null, holeRadPxRaw = null, holeRadPx = null, pxPerIn = null;
-let ballPt = null, ballRadPx = null;
-
-const sizeVal = document.getElementById('size-val');
-let sizeScale = 1.0;
-
-function applyScale(scale) {
-  sizeScale = Math.max(0.5, Math.min(4.0, scale));
-  sizeVal.textContent = sizeScale.toFixed(1) + 'x';
-  if (!holeRadPxRaw) return;
-  holeRadPx = holeRadPxRaw * sizeScale;
-  pxPerIn   = (holeRadPx * 2) / HOLE_DIA_IN;
-  redraw();
-}
-
-document.getElementById('btn-smaller').addEventListener('click', () => applyScale(sizeScale - 0.1));
-document.getElementById('btn-larger').addEventListener('click',  () => applyScale(sizeScale + 0.1));
-
 // ── Camera ──────────────────────────────────────────────
-document.getElementById('btn-start-cam').addEventListener('click', initCamera);
+document.getElementById('btn-start').addEventListener('click', initCamera);
 async function initCamera() {
   camStart.style.display = 'none';
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
     });
     video.srcObject = stream;
-  } catch (err) {
-    denied.classList.add('show');
-  }
+    video.addEventListener('loadedmetadata', () => {
+      syncCanvas();
+      running = true;
+      loop();
+    });
+  } catch { denied.classList.add('show'); }
 }
-video.addEventListener('loadedmetadata', syncCanvas);
+
 window.addEventListener('resize', syncCanvas);
 function syncCanvas() {
   const r = overlay.parentElement.getBoundingClientRect();
-  overlay.width = offscreen.width = r.width;
-  overlay.height = offscreen.height = r.height;
-  redraw();
+  overlay.width = r.width; overlay.height = r.height;
 }
 
-// ── Pixel detection ──────────────────────────────────────
-function captureFrame() {
-  offCtx.drawImage(video, 0, 0, offscreen.width, offscreen.height);
-}
-function getPixel(x, y) {
-  return offCtx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-}
-function colorDist(a, b) {
-  return Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2);
-}
-function detectHole(tapX, tapY) {
-  captureFrame();
-  const ref = getPixel(tapX, tapY);
-  function same(x, y) {
-    if (x < 0 || y < 0 || x >= offscreen.width || y >= offscreen.height) return false;
-    return colorDist(ref, getPixel(x, y)) < COLOR_THRESH;
-  }
-  const radii = [];
-  for (let i = 0; i < NUM_RAYS; i++) {
-    const angle = (i / NUM_RAYS) * Math.PI * 2;
-    const dx = Math.cos(angle), dy = Math.sin(angle);
-    let r = 1;
-    while (r < 300) {
-      if (!same(tapX + dx * r, tapY + dy * r)) { radii.push(r - 1); break; }
-      r++;
+// ── Detection ────────────────────────────────────────────
+function analyze() {
+  offCtx.drawImage(video, 0, 0, W, H);
+  const data = offCtx.getImageData(0, 0, W, H).data;
+
+  let darkX=0,darkY=0,darkN=0;
+  let darkMinX=W,darkMaxX=0,darkMinY=H,darkMaxY=0;
+  let whiteX=0,whiteY=0,whiteN=0;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const luma = 0.299*r + 0.587*g + 0.114*b;
+
+      // Hole: very dark (nearly black)
+      if (luma < 45) {
+        darkX += x; darkY += y; darkN++;
+        if (x < darkMinX) darkMinX = x;
+        if (x > darkMaxX) darkMaxX = x;
+        if (y < darkMinY) darkMinY = y;
+        if (y > darkMaxY) darkMaxY = y;
+      }
+
+      // Ball: bright white (high luma, low color saturation)
+      const maxC = Math.max(r,g,b), minC = Math.min(r,g,b);
+      if (luma > 210 && (maxC - minC) < 35) {
+        whiteX += x; whiteY += y; whiteN++;
+      }
     }
-    if (r >= 300) radii.push(null);
   }
-  const valid = radii.filter(r => r !== null && r >= MIN_RADIUS);
-  if (valid.length < NUM_RAYS * 0.5) return null;
-  valid.sort((a, b) => a - b);
-  const trim = Math.floor(valid.length * 0.1);
-  const trimmed = valid.slice(trim, valid.length - trim);
-  const avg = trimmed.reduce((s, v) => s + v, 0) / trimmed.length;
-  return avg < MIN_RADIUS ? null : avg;
+
+  const scaleX = overlay.width / W;
+  const scaleY = overlay.height / H;
+
+  let hole = null, ball = null;
+
+  // Hole: need enough dark pixels and a reasonable circle size
+  if (darkN > 20) {
+    const cx = darkX / darkN;
+    const cy = darkY / darkN;
+    // Radius from extent of dark region
+    const radX = (darkMaxX - darkMinX) / 2;
+    const radY = (darkMaxY - darkMinY) / 2;
+    const rad  = (radX + radY) / 2;
+    if (rad > 3 && rad < W * 0.4) { // sanity: not too small or filling whole frame
+      hole = {
+        x: cx * scaleX, y: cy * scaleY,
+        r: rad * ((scaleX + scaleY) / 2)
+      };
+    }
+  }
+
+  // Ball: need enough white pixels
+  if (whiteN > 8) {
+    ball = {
+      x: (whiteX / whiteN) * scaleX,
+      y: (whiteY / whiteN) * scaleY
+    };
+  }
+
+  return { hole, ball };
 }
 
-// ── Coords ───────────────────────────────────────────────
-function pt(e) {
-  const r = overlay.getBoundingClientRect();
-  const s = e.changedTouches ? e.changedTouches[0] : e;
-  return { x: (s.clientX - r.left) * (overlay.width / r.width),
-           y: (s.clientY - r.top)  * (overlay.height / r.height) };
-}
-function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
-
-// ── Draw ─────────────────────────────────────────────────
-function drawDot(p, col, r = 10) {
-  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
-  ctx.fillStyle = col; ctx.fill();
-  ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, Math.PI*2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.stroke();
-}
-function drawCircle(c, r, col, lw = 2.5, alpha = 1) {
-  ctx.globalAlpha = alpha;
-  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI*2);
+// ── Draw ────────────────────────────────────────────────
+function drawCircle(cx, cy, r, col, lw = 2.5) {
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
   ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
-  ctx.globalAlpha = 1;
 }
-function drawLine(a, b, col) {
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+function drawCross(cx, cy, size, col) {
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - size, cy); ctx.lineTo(cx + size, cy);
+  ctx.moveTo(cx, cy - size); ctx.lineTo(cx, cy + size);
+  ctx.stroke();
+}
+function drawLine(ax, ay, bx, by, col) {
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
   ctx.strokeStyle = col; ctx.lineWidth = 2.5;
-  ctx.setLineDash([8, 5]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.setLineDash([8,5]); ctx.stroke(); ctx.setLineDash([]);
 }
-function badge(txt, p, col, above) {
-  ctx.font = 'bold 14px "DM Mono", monospace';
+function badge(txt, x, y, col) {
+  ctx.font = 'bold 13px "DM Mono", monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(txt).width + 14, h = 24;
-  const bx = p.x - w/2, by = p.y - (above ? h + 10 : -10);
+  const w = ctx.measureText(txt).width + 12, h = 22;
   ctx.fillStyle = 'rgba(14,26,14,0.85)';
-  ctx.beginPath(); ctx.roundRect(bx, by, w, h, 4); ctx.fill();
-  ctx.fillStyle = col; ctx.fillText(txt, p.x, by + h/2);
+  ctx.beginPath(); ctx.roundRect(x - w/2, y - h/2, w, h, 3); ctx.fill();
+  ctx.fillStyle = col; ctx.fillText(txt, x, y);
 }
-function redraw() {
+
+// ── Main loop ────────────────────────────────────────────
+let frameCount = 0;
+function loop() {
+  if (!running) return;
+  animId = requestAnimationFrame(loop);
+
+  // Only analyze every 3rd frame (~20fps → ~7 analyses/sec)
+  frameCount++;
+  if (frameCount % 3 !== 0) return;
+
   ctx.clearRect(0, 0, overlay.width, overlay.height);
-  if (holeCenter && holeRadPx) {
-    drawCircle(holeCenter, holeRadPx, 'rgba(232,245,77,0.6)', 2.5);
-    drawDot(holeCenter, '#e8f54d', 6);
-  }
-  if (phase === 'result' && ballPt) {
-    drawLine(holeCenter, ballPt, '#72d472');
-    if (ballRadPx) drawCircle(ballPt, ballRadPx, 'rgba(114,212,114,0.55)', 2);
-    drawDot(ballPt, '#72d472');
-    const mid = { x: (holeCenter.x + ballPt.x)/2, y: (holeCenter.y + ballPt.y)/2 };
-    badge((dist(holeCenter, ballPt)/pxPerIn).toFixed(1)+'"', mid, '#72d472', ballPt.y > holeCenter.y);
-  }
-}
 
-// ── Tap ──────────────────────────────────────────────────
-function onTap(e) {
-  e.preventDefault();
-  const p = pt(e);
-  if (phase === 'hole') {
-    const r = detectHole(p.x, p.y);
-    if (r) {
-      holeCenter = p; holeRadPxRaw = r; holeRadPx = r;
-      pxPerIn = (r * 2) / HOLE_DIA_IN;
-      sizeSlider.value = '1.0';
-      phase = 'ball'; updateUI();
+  if (!video.videoWidth) return;
+
+  const { hole, ball } = analyze();
+
+  if (hole) {
+    drawCircle(hole.x, hole.y, hole.r, 'rgba(232,245,77,0.7)', 2.5);
+    drawCross(hole.x, hole.y, 7, '#e8f54d');
+    badge('HOLE', hole.x, hole.y - hole.r - 14, '#e8f54d');
+  }
+
+  if (ball) {
+    drawCircle(ball.x, ball.y, 12, 'rgba(114,212,114,0.7)', 2.5);
+    drawCross(ball.x, ball.y, 6, '#72d472');
+    badge('BALL', ball.x, ball.y - 22, '#72d472');
+  }
+
+  if (hole && ball) {
+    // Pixels per inch from hole diameter
+    const pxPerIn = (hole.r * 2) / HOLE_DIA_IN;
+    const dx = ball.x - hole.x, dy = ball.y - hole.y;
+    const distPx = Math.sqrt(dx*dx + dy*dy);
+    const inches = distPx / pxPerIn;
+
+    // Draw measurement line
+    drawLine(hole.x, hole.y, ball.x, ball.y, '#72d472');
+    badge(inches.toFixed(1)+'"',
+      (hole.x + ball.x)/2, (hole.y + ball.y)/2 - 14, '#72d472');
+
+    // Update UI
+    distEl.textContent = inches.toFixed(1) + ' in';
+    if (inches <= gimmeIn) {
+      verdEl.textContent = 'Gimme ✓';
+      verdEl.className = 'good';
     } else {
-      instr.textContent = "No edge found — tap on the hole";
-      setTimeout(() => { instr.textContent = 'Tap the center of the hole'; }, 2000);
+      verdEl.textContent = 'Putt it';
+      verdEl.className = 'bad';
     }
-    redraw();
-  } else if (phase === 'ball') {
-    const r = detectHole(p.x, p.y);
-    ballPt    = p;
-    ballRadPx = r || null;
-    showResult(dist(holeCenter, ballPt) / pxPerIn);
-    phase = 'result'; updateUI(); redraw();
-  }
-}
-overlay.addEventListener('click', onTap);
-overlay.addEventListener('touchend', onTap, { passive: false });
+    statusDot.className = 'locked';
+    statusText.textContent = 'Locked on hole and ball';
+    tips.style.display = 'none';
 
-function showResult(inches) {
-  distEl.textContent = inches.toFixed(1) + ' in';
-  if (inches <= gimmeIn) {
-    verdEl.textContent = `Gimme — within ${gimmeIn}"`;
-    verdEl.className = 'good';
   } else {
-    verdEl.textContent = `Putt it out — outside ${gimmeIn}"`;
-    verdEl.className = 'bad';
+    distEl.textContent = '—';
+    verdEl.textContent = '';
+    verdEl.className = 'none';
+    statusDot.className = 'searching';
+    tips.style.display = '';
+    if (!hole && !ball) statusText.textContent = 'Looking for hole and ball…';
+    else if (!hole)      statusText.textContent = 'Ball found — looking for hole…';
+    else                 statusText.textContent = 'Hole found — looking for ball…';
   }
 }
-
-// ── Buttons ───────────────────────────────────────────────
-btnAgain.addEventListener('click', () => { ballPt = ballRadPx = null; phase = 'ball'; updateUI(); redraw(); });
-btnReset.addEventListener('click', () => {
-  holeCenter = holeRadPxRaw = holeRadPx = pxPerIn = ballPt = ballRadPx = null;
-  sizeScale = 1.0; sizeVal.textContent = '1.0x';
-  phase = 'hole'; updateUI(); redraw();
-});
-
-// ── UI state ──────────────────────────────────────────────
-function updateUI() {
-  const map = {
-    hole:   { eye: 'Step 1 — Find the hole', ins: 'Tap the center of the hole',     d: ['active',''] },
-    ball:   { eye: 'Step 2 — Measure',       ins: 'Tap the center of the golf ball', d: ['done','active'] },
-    result: { eye: '',                        ins: '',                                d: ['done','done'] },
-  };
-  const s = map[phase];
-  eyebrow.textContent = s.eye;
-  instr.textContent   = s.ins;
-  dots.forEach((d, i) => {
-    d.className = 'sdot';
-    if (s.d[i] === 'active') d.classList.add('active');
-    if (s.d[i] === 'done')   d.classList.add('done');
-  });
-  infoPane.style.display  = phase === 'result' ? 'none' : '';
-  sizePane.classList.toggle('hidden', phase !== 'ball');
-  resPane.classList.toggle('show',    phase === 'result');
-  btnReset.classList.toggle('hidden', phase === 'hole');
-}
-
-updateUI();
-syncCanvas();
 </script>
