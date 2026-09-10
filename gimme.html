@@ -136,12 +136,24 @@ const dbgBtn     = document.getElementById('dbg-btn');
 let gimmeIn = 24, running = false, showDebug = false;
 let bgR = 70, bgG = 110, bgB = 50, bgCalibrated = false;
 
-// Lock state — once confirmed, freeze measurement
+// Lock state
 let locked = false;
 let lockedHole = null, lockedBall = null, lockedInches = 0;
 let confirmCount = 0;
-const CONFIRM_FRAMES = 4; // consecutive frames needed before locking
+const CONFIRM_FRAMES = 5;
 let lastHole = null, lastBall = null;
+
+// Smoothed display positions (exponential moving average)
+const SMOOTH = 0.25; // lower = smoother but slower
+let smHole = null, smBall = null;
+function smoothPt(sm, det) {
+  if (!sm || !det) return det ? {...det} : null;
+  return {
+    x: sm.x*(1-SMOOTH) + det.x*SMOOTH,
+    y: sm.y*(1-SMOOTH) + det.y*SMOOTH,
+    r: sm.r*(1-SMOOTH) + det.r*SMOOTH
+  };
+}
 
 const W = 160, H = 120;
 const off = document.createElement('canvas');
@@ -347,25 +359,26 @@ function analyze() {
   return { hole, ball };
 }
 
-// Peel-off: find biggest circular cluster, remove it, find next biggest
+// Score a cluster: higher = more circle-like (dense + compact)
+function scoreCluster(c) { return c ? c.n / (Math.PI * c.rad * c.rad) : 0; }
+
+// Find best two circular clusters by scanning spatially distinct regions
 function findTwoClusters(pixels) {
   if (pixels.length < 5) return [];
 
-  // Find first (largest) cluster
+  // Find best cluster overall
   const c1 = clusterPx(pixels, 5, 2, 0.5);
   if (!c1) return [];
 
-  // Remove pixels belonging to first cluster (within 3× its radius)
+  // Remove c1 pixels, find best cluster in remainder
   const re1 = Math.sqrt(c1.n / Math.PI);
-  const remaining = pixels.filter(([x,y]) => Math.hypot(x-c1.cx, y-c1.cy) > re1 * 2.0);
+  const rest = pixels.filter(([x,y]) => Math.hypot(x-c1.cx,y-c1.cy) > re1*2.2);
+  if (rest.length < 4) return [c1];
 
-  if (remaining.length < 4) return [c1];
+  const c2 = clusterPx(rest, 4, 1, 0.5);
+  if (!c2) return [c1];
 
-  // Find second cluster from remaining pixels
-  const c2 = clusterPx(remaining, 4, 1, 0.5);
-  if (c2) return [c1, c2];
-
-  return [c1];
+  return [c1, c2];
 }
 
 // ── Draw helpers ──────────────────────────────────────────────────────────
@@ -448,25 +461,29 @@ function loop() {
   }
 
   if (hole && ball) {
-    const pxPerIn = (hole.r*2) / HOLE_DIA_IN;
-    const inches  = Math.hypot(ball.x-hole.x, ball.y-hole.y) / pxPerIn;
+    // Smooth positions — circles glide instead of jumping
+    smHole = smoothPt(smHole, hole);
+    smBall = smoothPt(smBall, ball);
 
-    // Check consistency with last frame — require stable position before locking
-    const stableHole = lastHole && Math.hypot(hole.x-lastHole.x, hole.y-lastHole.y) < hole.r * 0.4;
-    const stableBall = lastBall && Math.hypot(ball.x-lastBall.x, ball.y-lastBall.y) < ball.r * 0.8;
+    const pxPerIn = (smHole.r*2) / HOLE_DIA_IN;
+    const inches  = Math.hypot(smBall.x-smHole.x, smBall.y-smHole.y) / pxPerIn;
+
+    // Stability check on raw (not smoothed) positions
+    const stableHole = lastHole && Math.hypot(hole.x-lastHole.x, hole.y-lastHole.y) < hole.r*0.4;
+    const stableBall = lastBall && Math.hypot(ball.x-lastBall.x, ball.y-lastBall.y) < ball.r*0.8;
     if (stableHole && stableBall) confirmCount++;
     else confirmCount = 0;
     lastHole = hole; lastBall = ball;
 
-    // Draw live (pre-lock)
-    ring(hole.x,hole.y,hole.r,'rgba(232,245,77,0.85)');
-    cross(hole.x,hole.y,7,'#e8f54d');
-    badge('HOLE',hole.x,hole.y-hole.r-14,'#e8f54d');
-    ring(ball.x,ball.y,ball.r,'rgba(114,212,114,0.85)');
-    cross(ball.x,ball.y,6,'#72d472');
-    badge('BALL',ball.x,ball.y-ball.r-14,'#72d472');
-    dashedLine(hole.x,hole.y,ball.x,ball.y);
-    badge(inches.toFixed(1)+'"',(hole.x+ball.x)/2,(hole.y+ball.y)/2-14,'#72d472');
+    // Draw smoothed positions
+    ring(smHole.x,smHole.y,smHole.r,'rgba(232,245,77,0.85)');
+    cross(smHole.x,smHole.y,7,'#e8f54d');
+    badge('HOLE',smHole.x,smHole.y-smHole.r-14,'#e8f54d');
+    ring(smBall.x,smBall.y,smBall.r,'rgba(114,212,114,0.85)');
+    cross(smBall.x,smBall.y,6,'#72d472');
+    badge('BALL',smBall.x,smBall.y-smBall.r-14,'#72d472');
+    dashedLine(smHole.x,smHole.y,smBall.x,smBall.y);
+    badge(inches.toFixed(1)+'"',(smHole.x+smBall.x)/2,(smHole.y+smBall.y)/2-14,'#72d472');
 
     if (confirmCount >= CONFIRM_FRAMES) {
       // Lock it
