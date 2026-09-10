@@ -308,19 +308,18 @@ function analyze() {
   let hole = null, ball = null;
 
   if (clusters.length === 2) {
-    // Larger radius = hole, smaller = ball
     const [a, b2] = clusters[0].rad >= clusters[1].rad ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
-    // Only accept if size ratio is plausible (hole should be ~2.5× ball)
     const ratio = a.rad / b2.rad;
-    if (ratio >= 1.2 && ratio <= 8.0) {
+    // Size lock: ball must be 25–70% of hole radius (1.68/4.25 = 0.40 ideal).
+    // Rejects same-size objects (two shoes, two balls, etc.)
+    if (ratio >= 1.4 && ratio <= 4.0) {
       hole = { x: a.cx*sx2,  y: a.cy*sy2,  r: Math.max(10, a.rad*sc) };
-      ball = { x: b2.cx*sx2, y: b2.cy*sy2, r: Math.max(8,  b2.rad*sc) };
+      ball = { x: b2.cx*sx2, y: b2.cy*sy2, r: Math.max(6,  b2.rad*sc) };
     } else {
-      // Ratio off — just take the larger as hole, skip ball
+      // Ratio wrong — only commit to hole (larger), ignore other object
       hole = { x: a.cx*sx2, y: a.cy*sy2, r: Math.max(10, a.rad*sc) };
     }
   } else if (clusters.length === 1) {
-    // Single cluster — could be either; show as hole candidate
     const c = clusters[0];
     hole = { x: c.cx*sx2, y: c.cy*sy2, r: Math.max(10, c.rad*sc) };
   }
