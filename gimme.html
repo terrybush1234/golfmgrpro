@@ -166,35 +166,50 @@ function syncCanvas() {
 }
 
 // ── Detection ────────────────────────────────────────────
-// Radius from pixel area is far more robust than bounding box:
-// scattered stray pixels blow up bounding box but barely affect area.
-// r = sqrt(pixelCount / π)  (treating dark cluster as filled circle)
+let debugInfo = '';
+
+function clusterPx(pixels, minCount, minRad, maxRadFrac) {
+  if (pixels.length < minCount) return null;
+  let sx=0, sy=0;
+  for (const [x,y] of pixels) { sx+=x; sy+=y; }
+  let cx=sx/pixels.length, cy=sy/pixels.length;
+  // Prune outliers twice to converge on the main cluster
+  let pts = pixels;
+  for (let i=0; i<2; i++) {
+    const re = Math.sqrt(pts.length / Math.PI);
+    pts = pts.filter(([x,y]) => Math.hypot(x-cx, y-cy) < re*2.5);
+    if (pts.length < minCount) return null;
+    sx=0; sy=0;
+    for (const [x,y] of pts) { sx+=x; sy+=y; }
+    cx=sx/pts.length; cy=sy/pts.length;
+  }
+  const rad = Math.sqrt(pts.length / Math.PI);
+  if (rad < minRad || rad > W * maxRadFrac) return null;
+  return { cx, cy, rad, n: pts.length };
+}
 
 function analyze() {
   offCtx.drawImage(video, 0, 0, W, H);
   const data = offCtx.getImageData(0, 0, W, H).data;
 
-  // Collect candidate pixels
   const darkPx = [], whitePx = [];
+  let minL=255, maxL=0;
 
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      const r = data[i], g = data[i+1], b = data[i+2];
+  for (let y=0; y<H; y++) {
+    for (let x=0; x<W; x++) {
+      const i = (y*W+x)*4;
+      const r=data[i], g=data[i+1], b=data[i+2];
       const luma = 0.299*r + 0.587*g + 0.114*b;
+      const sat  = Math.max(r,g,b) - Math.min(r,g,b);
+      if (luma < minL) minL = luma;
+      if (luma > maxL) maxL = luma;
 
-      // Hole: distinctly darker than typical grass (~50–90 luma)
-      // Use relative threshold: luma < 60 catches real holes without needing
-      // pitch-black; shadows on grass are usually green-tinted, not neutral.
-      const sat = Math.max(r,g,b) - Math.min(r,g,b);
-      if (luma < 60 && sat < 30) {        // dark AND desaturated (not green shadow)
-        darkPx.push([x, y]);
-      }
+      // Hole: darkest pixels that aren't green-tinted grass shadow
+      // (grass shadow: g channel much higher than r and b)
+      if (luma < 75 && (g - Math.min(r,b)) < 30) darkPx.push([x,y]);
 
-      // Ball: bright white (high luma, low saturation so not yellow flag etc.)
-      if (luma > 185 && sat < 40) {
-        whitePx.push([x, y]);
-      }
+      // Ball: bright white, low saturation (not yellow flag / sun glare on metal)
+      if (luma > 165 && sat < 60) whitePx.push([x,y]);
     }
   }
 
@@ -202,58 +217,15 @@ function analyze() {
   const scaleY = overlay.height / H;
   const avgScale = (scaleX + scaleY) / 2;
 
+  debugInfo = `dark:${darkPx.length} white:${whitePx.length} luma ${Math.round(minL)}-${Math.round(maxL)}`;
+
   let hole = null, ball = null;
 
-  // ── Hole ──
-  // Need a meaningful cluster; radius from area avoids bounding-box explosion
-  if (darkPx.length >= 15) {
-    let sx=0, sy=0;
-    for (const [x,y] of darkPx) { sx+=x; sy+=y; }
-    const cx = sx / darkPx.length;
-    const cy = sy / darkPx.length;
+  const hc = clusterPx(darkPx,  8, 2, 0.45);
+  if (hc) hole = { x: hc.cx*scaleX, y: hc.cy*scaleY, r: Math.max(8, hc.rad*avgScale) };
 
-    // Keep only pixels within 2× estimated radius (prune stray outliers)
-    const radRaw = Math.sqrt(darkPx.length / Math.PI);
-    const close = darkPx.filter(([x,y]) => {
-      const d = Math.hypot(x-cx, y-cy);
-      return d < radRaw * 2.5;
-    });
-
-    if (close.length >= 12) {
-      let sx2=0, sy2=0;
-      for (const [x,y] of close) { sx2+=x; sy2+=y; }
-      const cx2 = sx2 / close.length;
-      const cy2 = sy2 / close.length;
-      const rad  = Math.sqrt(close.length / Math.PI);
-
-      // Sanity: radius must be plausible for a hole at arm/waist distance
-      // In 160px wide frame a 4.25" hole at ~3ft fills ~6–25px radius
-      if (rad >= 4 && rad <= W * 0.35) {
-        hole = { x: cx2 * scaleX, y: cy2 * scaleY, r: rad * avgScale };
-      }
-    }
-  }
-
-  // ── Ball ──
-  if (whitePx.length >= 8) {
-    let sx=0, sy=0;
-    for (const [x,y] of whitePx) { sx+=x; sy+=y; }
-    const cx = sx / whitePx.length;
-    const cy = sy / whitePx.length;
-
-    const radRaw = Math.sqrt(whitePx.length / Math.PI);
-    const close = whitePx.filter(([x,y]) => Math.hypot(x-cx, y-cy) < radRaw * 2.5);
-
-    if (close.length >= 6) {
-      let sx2=0, sy2=0;
-      for (const [x,y] of close) { sx2+=x; sy2+=y; }
-      ball = {
-        x: (sx2/close.length) * scaleX,
-        y: (sy2/close.length) * scaleY,
-        r: Math.max(10, Math.sqrt(close.length / Math.PI) * avgScale)
-      };
-    }
-  }
+  const bc = clusterPx(whitePx, 5, 2, 0.42);
+  if (bc) ball = { x: bc.cx*scaleX, y: bc.cy*scaleY, r: Math.max(10, bc.rad*avgScale) };
 
   return { hole, ball };
 }
@@ -347,5 +319,18 @@ function loop() {
     else if (!hole)      statusText.textContent = 'Ball found — looking for hole…';
     else                 statusText.textContent = 'Hole found — looking for ball…';
   }
+
+  // Debug overlay — tap overlay to toggle
+  if (showDebug) {
+    ctx.font = '11px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(6, 6, 260, 18);
+    ctx.fillStyle = '#e8f54d';
+    ctx.fillText(debugInfo, 10, 8);
+  }
 }
+
+let showDebug = true;
+overlay.addEventListener('click', () => { showDebug = !showDebug; });
 </script>
