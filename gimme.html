@@ -171,62 +171,58 @@ function avgLuma(data,ox,oy,r) {
   return n?sum/n:128;
 }
 
-// Find the darkest (hole) or brightest (ball) seed in a search area
-// mode: 'dark' | 'bright'
-function findSeed(data, ox0, oy0, searchR, mode) {
-  const STEP=Math.max(2,searchR/10);
-  let bestVal = mode==='dark'?999:-1, bx=ox0, by=oy0;
-  for (let dy=-searchR;dy<=searchR;dy+=STEP) {
-    for (let dx=-searchR;dx<=searchR;dx+=STEP) {
-      if (dx*dx+dy*dy>searchR*searchR) continue;
-      const nx=ox0+dx, ny=oy0+dy;
-      if (nx<2||nx>=OW-2||ny<2||ny>=OH-2) continue;
-      const v=avgLuma(data,nx,ny,2);
+// Find darkest/brightest seed strictly within screen-coord bounds
+function findSeedInBounds(data, sMinX,sMinY,sMaxX,sMaxY, mode) {
+  // Convert screen bounds to offscreen coords
+  const oX0=(sMinX/overlay.width)*OW, oX1=(sMaxX/overlay.width)*OW;
+  const oY0=(sMinY/overlay.height)*OH, oY1=(sMaxY/overlay.height)*OH;
+  const STEP=Math.max(1.5,(oX1-oX0)/14);
+  let bestVal=mode==='dark'?999:-1;
+  let bx=(oX0+oX1)/2, by=(oY0+oY1)/2;
+  for (let oy=oY0+2;oy<=oY1-2;oy+=STEP) {
+    for (let ox=oX0+2;ox<=oX1-2;ox+=STEP) {
+      if (ox<2||ox>=OW-2||oy<2||oy>=OH-2) continue;
+      const v=avgLuma(data,ox,oy,2);
       if ((mode==='dark'&&v<bestVal)||(mode==='bright'&&v>bestVal)) {
-        bestVal=v; bx=nx; by=ny;
+        bestVal=v; bx=ox; by=oy;
       }
     }
   }
   return {ox:bx,oy:by};
 }
 
-// From seed, cast rays outward to find the object edge.
-// dark mode: hole cup is very dark — stop when luma crosses into grass (> 80 absolute)
-// bright mode: ball is white — stop when luma drops sharply relative to seed
-function rayRadius(data, ox, oy, maxR, mode) {
+// Cast rays from seed, stopping at edge or at the offscreen bounding box
+function rayRadiusInBounds(data, ox, oy, maxR, mode, oMinX,oMinY,oMaxX,oMaxY) {
   const RAYS=32;
   const seedL=avgLuma(data,ox,oy,2);
-  // For dark mode use absolute grass threshold; for bright use relative drop
   const threshold = mode==='dark' ? 85 : seedL*0.65;
   const radii=[];
   for (let i=0;i<RAYS;i++) {
     const angle=(i/RAYS)*Math.PI*2;
-    const dx=Math.cos(angle), dy=Math.sin(angle);
+    const dxr=Math.cos(angle), dyr=Math.sin(angle);
     let edgeD=maxR;
     for (let d=1.5;d<=maxR;d+=0.4) {
-      const nx=Math.round(ox+dx*d), ny=Math.round(oy+dy*d);
-      if (nx<0||nx>=OW||ny<0||ny>=OH) { edgeD=d; break; }
+      const nx=Math.round(ox+dxr*d), ny=Math.round(oy+dyr*d);
+      // Stop at canvas edge or box boundary
+      if (nx<0||nx>=OW||ny<0||ny>=OH||nx<oMinX||nx>oMaxX||ny<oMinY||ny>oMaxY) { edgeD=d; break; }
       const v=luma(data,nx,ny);
-      const crossed = mode==='dark' ? v>threshold : v<threshold;
-      if (crossed) { edgeD=d; break; }
+      if (mode==='dark' ? v>threshold : v<threshold) { edgeD=d; break; }
     }
     radii.push(edgeD);
   }
   const sorted=[...radii].sort((a,b)=>a-b);
-  // Use median (50th pct) for hole — more accurate when shape is consistent
-  // Use 40th pct for ball to keep tight
   return sorted[Math.floor(RAYS*(mode==='dark'?0.50:0.40))];
 }
 
-// Find hole (dark circle) or ball (bright circle) near a screen tap
-// mode: 'dark'|'bright', returns screen coords {x,y,r} or null
-function findObject(screenX, screenY, searchRadSc, maxRadSc, mode) {
+// Detect object strictly within a screen-coord bounding box
+// Returns screen coords {x,y,r} or null
+function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode, maxRadSc) {
   const data=captureFrame();
-  const {ox:ox0,oy:oy0}=s2o(screenX,screenY);
-  const searchR=(searchRadSc/overlay.width)*OW;
-  const maxR   =(maxRadSc   /overlay.width)*OW;
-  const seed=findSeed(data,ox0,oy0,searchR,mode);
-  const r=rayRadius(data,seed.ox,seed.oy,maxR,mode);
+  const oMinX=(sMinX/overlay.width)*OW, oMaxX=(sMaxX/overlay.width)*OW;
+  const oMinY=(sMinY/overlay.height)*OH, oMaxY=(sMaxY/overlay.height)*OH;
+  const maxROff=(maxRadSc/overlay.width)*OW;
+  const seed=findSeedInBounds(data,sMinX,sMinY,sMaxX,sMaxY,mode);
+  const r=rayRadiusInBounds(data,seed.ox,seed.oy,maxROff,mode,oMinX,oMinY,oMaxX,oMaxY);
   if (r<2) return null;
   const {sx,sy}=o2s(seed.ox,seed.oy);
   return {x:sx, y:sy, r:(r/OW)*overlay.width};
@@ -350,18 +346,15 @@ function redraw() {
   drawRing(rings[1]);
 }
 
-// ── Detect inside half of the scene box ──────────────────────────────────
+// ── Detect inside half of the scene box — fully bounded ──────────────────
 function detectHalf(box, side, mode, maxRadSc) {
   const {x1,y1,x2,y2}=box;
   const left=Math.min(x1,x2), right=Math.max(x1,x2);
-  const top=Math.min(y1,y2), bot=Math.max(y1,y2);
+  const top=Math.min(y1,y2),  bot=Math.max(y1,y2);
   const mid=(left+right)/2;
-  const hx = side==='left' ? (left+mid)/2 : (mid+right)/2;
-  const hy = (top+bot)/2;
-  const halfW = (right-left)/4; // quarter of full width = half-box radius
-  const halfH = (bot-top)/2;
-  const searchR = Math.min(halfW, halfH) * 0.9;
-  return findObject(hx, hy, searchR, maxRadSc, mode);
+  const bLeft  = side==='left' ? left  : mid;
+  const bRight = side==='left' ? mid   : right;
+  return findObjectInBounds(bLeft, top, bRight, bot, mode, maxRadSc);
 }
 
 // ── Touch / mouse: draw boxes ─────────────────────────────────────────────
