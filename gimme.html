@@ -33,6 +33,16 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #cam-denied p  { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #7a9a7a; max-width: 280px; line-height: 1.4; }
 #cam-denied button { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; background: #e8f54d; color: #0e1a0e; border: none; border-radius: 6px; padding: 12px 28px; cursor: pointer; }
 
+/* Debug toggle button */
+#dbg-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 10;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700;
+  background: rgba(14,26,14,0.75); color: #7a9a7a;
+  border: 1px solid #2c422c; border-radius: 5px; padding: 5px 10px;
+  cursor: pointer; display: none; -webkit-tap-highlight-color: transparent;
+}
+#dbg-btn.on { color: #e8f54d; border-color: #e8f54d; }
+
 #panel {
   background: #0e1a0e; border-top: 2px solid #1e321e;
   padding: 14px 18px 18px; flex-shrink: 0;
@@ -67,6 +77,7 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
 <div id="cam-wrap">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
+  <button id="dbg-btn">DEBUG</button>
   <div id="cam-start">
     <h2>Gimme Check</h2>
     <p>Point camera at the hole and ball. Distance appears automatically.</p>
@@ -97,10 +108,17 @@ video { width: 100%; height: 100%; object-fit: cover; display: block; }
     <div id="distance">—</div>
     <div id="verdict" class="none"></div>
   </div>
-  <div id="tips">Point camera down · Works with any ball color</div>
+  <div id="tips">Point camera down · Hole = white cup · Any ball color</div>
 </div>
 
 <script>
+// ── Known sizes ───────────────────────────────────────────
+const HOLE_DIA_IN = 4.25;
+const BALL_DIA_IN = 1.68;
+// Hole is ~2.53× the diameter of a ball.
+// We use this ratio to tell them apart when both appear as bright circles.
+const SIZE_RATIO  = HOLE_DIA_IN / BALL_DIA_IN; // ~2.53
+
 const video      = document.getElementById('video');
 const overlay    = document.getElementById('overlay');
 const ctx        = overlay.getContext('2d');
@@ -109,15 +127,19 @@ const statusText = document.getElementById('status-text');
 const distEl     = document.getElementById('distance');
 const verdEl     = document.getElementById('verdict');
 const tips       = document.getElementById('tips');
+const dbgBtn     = document.getElementById('dbg-btn');
 
-const HOLE_DIA_IN = 4.25;
-let gimmeIn = 24, running = false;
+let gimmeIn = 24, running = false, showDebug = false;
 
-// Small analysis canvas — fast pixel reads
 const W = 160, H = 120;
 const off = document.createElement('canvas');
 off.width = W; off.height = H;
 const offCtx = off.getContext('2d', { willReadFrequently: true });
+
+// Debug pixel canvas
+const dbgCv = document.createElement('canvas');
+dbgCv.width = W; dbgCv.height = H;
+const dbgCtx = dbgCv.getContext('2d');
 
 document.querySelectorAll('.gimme-btn').forEach(b => {
   b.addEventListener('click', () => {
@@ -127,6 +149,12 @@ document.querySelectorAll('.gimme-btn').forEach(b => {
   });
 });
 
+dbgBtn.addEventListener('click', () => {
+  showDebug = !showDebug;
+  dbgBtn.classList.toggle('on', showDebug);
+  dbgBtn.textContent = showDebug ? 'DEBUG ON' : 'DEBUG';
+});
+
 document.getElementById('btn-start').addEventListener('click', async () => {
   document.getElementById('cam-start').style.display = 'none';
   try {
@@ -134,7 +162,9 @@ document.getElementById('btn-start').addEventListener('click', async () => {
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
     });
     video.srcObject = stream;
-    video.addEventListener('loadedmetadata', () => { syncCanvas(); running = true; loop(); });
+    video.addEventListener('loadedmetadata', () => {
+      syncCanvas(); running = true; dbgBtn.style.display = 'block'; loop();
+    });
   } catch { document.getElementById('cam-denied').classList.add('show'); }
 });
 
@@ -144,7 +174,7 @@ function syncCanvas() {
   overlay.width = r.width; overlay.height = r.height;
 }
 
-// ── Cluster: prune outliers, return centroid + area-based radius ──────────
+// ── Cluster pixels: prune outliers, return centroid + area-radius ─────────
 function clusterPx(pixels, minCount, minRad, maxRadFrac) {
   if (pixels.length < minCount) return null;
   let sx=0, sy=0;
@@ -154,81 +184,119 @@ function clusterPx(pixels, minCount, minRad, maxRadFrac) {
     const re = Math.sqrt(pts.length / Math.PI);
     pts = pts.filter(([x,y]) => Math.hypot(x-cx,y-cy) < re*2.5);
     if (pts.length < minCount) return null;
-    sx=0; sy=0;
-    for (const [x,y] of pts) { sx+=x; sy+=y; }
+    sx=0; sy=0; for (const [x,y] of pts) { sx+=x; sy+=y; }
     cx=sx/pts.length; cy=sy/pts.length;
   }
   const rad = Math.sqrt(pts.length / Math.PI);
   if (rad < minRad || rad > W * maxRadFrac) return null;
-  return { cx, cy, rad };
+  return { cx, cy, rad, n: pts.length };
 }
 
-// ── Main analysis ─────────────────────────────────────────────────────────
+// ── Analysis ──────────────────────────────────────────────────────────────
 function analyze() {
   offCtx.drawImage(video, 0, 0, W, H);
   const data = offCtx.getImageData(0, 0, W, H).data;
 
-  // ── Pass 1: sample grass color from the majority of pixels ───────────
-  // Grass is greenish (g > r, g > b) and medium brightness.
-  // We collect a rough median to adapt to lighting conditions.
+  // Pass 1: sample grass color (green-dominant, medium brightness)
   let gR=0, gG=0, gB=0, gN=0;
   for (let i=0; i<data.length; i+=4) {
     const r=data[i], g=data[i+1], b=data[i+2];
-    // Green-biased pixels: green channel leads, medium brightness
-    if (g > r*1.05 && g > b*1.05 && g > 30 && g < 230) {
+    if (g > r*1.05 && g > b*1.05 && g > 30 && g < 220) {
       gR+=r; gG+=g; gB+=b; gN++;
     }
   }
-  // Fallback grass color if frame has too little green (sand trap, etc.)
-  const grassR = gN > 100 ? gR/gN : 80;
-  const grassG = gN > 100 ? gG/gN : 120;
-  const grassB = gN > 100 ? gB/gN : 60;
+  const grassR = gN > 80 ? gR/gN : 70;
+  const grassG = gN > 80 ? gG/gN : 110;
+  const grassB = gN > 80 ? gB/gN : 50;
 
-  // ── Pass 2: classify each pixel ───────────────────────────────────────
-  const holePx = [], ballPx = [];
+  // Pass 2: find non-grass pixels above shadow level (not shadow, not grass)
+  const nonGrassPx = [];
+  const dbgImg = showDebug ? dbgCtx.createImageData(W, H) : null;
 
   for (let y=0; y<H; y++) {
     for (let x=0; x<W; x++) {
       const i = (y*W+x)*4;
       const r=data[i], g=data[i+1], b=data[i+2];
       const luma = 0.299*r + 0.587*g + 0.114*b;
-
-      // ── HOLE: nearly black, neutral (not green-tinted shadow) ────────
-      // Real cup interior is very dark. Require luma < 45 so stray shadows
-      // on clothing/ground don't trigger. Green-tint check excludes grass shadow.
-      if (luma < 45 && (g - Math.min(r,b)) < 20) {
-        holePx.push([x, y]);
-      }
-
-      // ── BALL: most different from grass, but brighter than a shadow ───
-      // Color distance from grass median in RGB space.
-      // Any colored ball (white, yellow, red, orange, pink) will be
-      // far from green grass in color space AND brighter than the hole.
-      const dr = r - grassR, dg = g - grassG, db = b - grassB;
+      const dr=r-grassR, dg=g-grassG, db=b-grassB;
       const colorDist = Math.sqrt(dr*dr + dg*dg + db*db);
 
-      // Must be meaningfully different from grass AND not dark (not the hole)
-      if (colorDist > 55 && luma > 80) {
-        ballPx.push([x, y]);
+      // Not grass, not a shadow (luma > 60 excludes very dark areas AND most shadows)
+      const isCandidate = colorDist > 50 && luma > 60;
+
+      if (isCandidate) nonGrassPx.push([x, y]);
+
+      if (showDebug && dbgImg) {
+        const di = i;
+        if (isCandidate) {
+          dbgImg.data[di]=255; dbgImg.data[di+1]=220; dbgImg.data[di+2]=0; dbgImg.data[di+3]=160;
+        } else {
+          dbgImg.data[di+3]=0;
+        }
       }
     }
   }
 
-  const sx=overlay.width/W, sy=overlay.height/H, sc=(sx+sy)/2;
-  let hole=null, ball=null;
+  if (showDebug && dbgImg) {
+    dbgCtx.putImageData(dbgImg, 0, 0);
+  }
 
-  const hc = clusterPx(holePx, 18, 3, 0.45);
-  if (hc) hole = { x: hc.cx*sx, y: hc.cy*sy, r: Math.max(8, hc.rad*sc) };
+  // Cluster all non-grass candidates
+  const cluster = clusterPx(nonGrassPx, 5, 2, 0.5);
+  if (!cluster) return { hole: null, ball: null, clusters: [] };
 
-  const bc = clusterPx(ballPx, 5, 2, 0.35);
-  if (bc) ball = { x: bc.cx*sx, y: bc.cy*sy, r: Math.max(10, bc.rad*sc) };
+  // Split into two groups: pixels close to cluster center vs farther out
+  // The hole (larger) and ball (smaller) may form two sub-clusters.
+  // Strategy: find largest cluster first (hole candidate), then look for
+  // a second cluster that is clearly separated from it.
 
-  // If hole and ball centroids are too close, they're the same object — discard ball
-  if (hole && ball && Math.hypot(ball.x-hole.x, ball.y-hole.y) < hole.r * 1.5) {
-    ball = null;
+  const sx2 = overlay.width/W, sy2 = overlay.height/H, sc=(sx2+sy2)/2;
+
+  // Find up to 2 distinct clusters by splitting non-grass pixels
+  const clusters = findTwoClusters(nonGrassPx);
+  let hole = null, ball = null;
+
+  if (clusters.length === 2) {
+    // Larger radius = hole, smaller = ball
+    const [a, b2] = clusters[0].rad >= clusters[1].rad ? [clusters[0], clusters[1]] : [clusters[1], clusters[0]];
+    // Only accept if size ratio is plausible (hole should be ~2.5× ball)
+    const ratio = a.rad / b2.rad;
+    if (ratio >= 1.4 && ratio <= 5.0) {
+      hole = { x: a.cx*sx2,  y: a.cy*sy2,  r: Math.max(10, a.rad*sc) };
+      ball = { x: b2.cx*sx2, y: b2.cy*sy2, r: Math.max(8,  b2.rad*sc) };
+    } else {
+      // Ratio off — just take the larger as hole, skip ball
+      hole = { x: a.cx*sx2, y: a.cy*sy2, r: Math.max(10, a.rad*sc) };
+    }
+  } else if (clusters.length === 1) {
+    // Single cluster — could be either; show as hole candidate
+    const c = clusters[0];
+    hole = { x: c.cx*sx2, y: c.cy*sy2, r: Math.max(10, c.rad*sc) };
   }
 
   return { hole, ball };
+}
+
+// Find up to 2 distinct clusters using simple 2-pass centroid split
+function findTwoClusters(pixels) {
+  if (pixels.length < 5) return [];
+
+  const c1 = clusterPx(pixels, 5, 2, 0.5);
+  if (!c1) return [];
+
+  // Pixels far from first cluster centroid may form a second cluster
+  const re1 = Math.sqrt(c1.n / Math.PI);
+  const near  = pixels.filter(([x,y]) => Math.hypot(x-c1.cx, y-c1.cy) <= re1*2.0);
+  const far   = pixels.filter(([x,y]) => Math.hypot(x-c1.cx, y-c1.cy) >  re1*2.5);
+
+  const refined1 = clusterPx(near, 5, 2, 0.5);
+  if (!refined1) return [c1];
+
+  if (far.length >= 5) {
+    const c2 = clusterPx(far, 5, 2, 0.5);
+    if (c2) return [refined1, c2];
+  }
+  return [refined1];
 }
 
 // ── Draw helpers ──────────────────────────────────────────────────────────
@@ -265,15 +333,21 @@ function loop() {
   if (++frameCount % 3 !== 0 || !video.videoWidth) return;
 
   ctx.clearRect(0,0,overlay.width,overlay.height);
+
+  // Draw debug pixel layer first (behind circles)
+  if (showDebug) {
+    ctx.drawImage(dbgCv, 0, 0, overlay.width, overlay.height);
+  }
+
   const { hole, ball } = analyze();
 
   if (hole) {
-    ring(hole.x,hole.y,hole.r,'rgba(232,245,77,0.75)');
+    ring(hole.x,hole.y,hole.r,'rgba(232,245,77,0.85)');
     cross(hole.x,hole.y,7,'#e8f54d');
     badge('HOLE',hole.x,hole.y-hole.r-14,'#e8f54d');
   }
   if (ball) {
-    ring(ball.x,ball.y,ball.r,'rgba(114,212,114,0.75)');
+    ring(ball.x,ball.y,ball.r,'rgba(114,212,114,0.85)');
     cross(ball.x,ball.y,6,'#72d472');
     badge('BALL',ball.x,ball.y-ball.r-14,'#72d472');
   }
@@ -283,7 +357,6 @@ function loop() {
     const inches  = Math.hypot(ball.x-hole.x, ball.y-hole.y) / pxPerIn;
     dashedLine(hole.x,hole.y,ball.x,ball.y);
     badge(inches.toFixed(1)+'"',(hole.x+ball.x)/2,(hole.y+ball.y)/2-14,'#72d472');
-
     distEl.textContent = inches.toFixed(1)+' in';
     verdEl.textContent = inches<=gimmeIn ? 'Gimme ✓' : 'Putt it';
     verdEl.className   = inches<=gimmeIn ? 'good' : 'bad';
