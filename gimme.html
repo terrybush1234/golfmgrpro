@@ -201,15 +201,21 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
     }
   }
 
-  // 2. Threshold: midpoint between seed and the background median
+  // 2. Tight threshold: 25% of the way from seed toward median
+  //    Keeps fill close to the actual object, excludes connected shadows/fringe
   let vals=[];
   for (let y=oMinY;y<=oMaxY;y++)
     for (let x=oMinX;x<=oMaxX;x++) vals.push(luma(data,x,y));
   vals.sort((a,b)=>a-b);
   const medianV=vals[Math.floor(vals.length/2)];
-  const thresh=(bestVal+medianV)/2;
+  const thresh = mode==='dark'
+    ? bestVal + (medianV-bestVal)*0.25   // dark: allow 25% above darkest
+    : bestVal - (bestVal-medianV)*0.25;  // bright: allow 25% below brightest
 
-  // 3. BFS flood fill from seed — only connected pixels on same side of threshold
+  // Max radius for flood fill — hole can't be more than 30% of the half-box width
+  const maxFillR = (oMaxX-oMinX)*0.60;
+
+  // 3. BFS flood fill from seed — connected pixels within threshold AND within maxFillR
   const visited=new Uint8Array(OW*OH);
   const queue=[[seedX,seedY]];
   visited[seedY*OW+seedX]=1;
@@ -220,6 +226,7 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
     const v=luma(data,x,y);
     const inObj=mode==='dark'?v<=thresh:v>=thresh;
     if (!inObj) continue;
+    if (Math.hypot(x-seedX,y-seedY)>maxFillR) continue;
     sumX+=x; sumY+=y; count++;
     for (const [dx,dy] of dirs) {
       const nx=x+dx, ny=y+dy;
@@ -268,9 +275,7 @@ function showResult() {
   const hx=rings[0].targetX, hy=rings[0].targetY, hr=rings[0].targetR;
   const bx=rings[1].targetX, by=rings[1].targetY, br=rings[1].targetR;
   const pxPerIn=(hr*2)/HOLE_DIA_IN;
-  const centerPx=Math.hypot(bx-hx,by-hy);
-  const edgePx=Math.max(0,centerPx-hr-br);
-  const inches=edgePx/pxPerIn;
+  const inches=Math.hypot(bx-hx,by-hy)/pxPerIn;
   distEl.textContent=inches.toFixed(1)+' in';
   const isGimme=inches<=gimmeIn;
   verdEl.textContent=isGimme?'Gimme ✓':'Putt it';
