@@ -174,52 +174,64 @@ function avgLuma(data,ox,oy,r) {
 // Convert screen box to offscreen box
 function screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY) {
   return {
-    oMinX: Math.max(0,(sMinX/overlay.width)*OW),
-    oMaxX: Math.min(OW,(sMaxX/overlay.width)*OW),
-    oMinY: Math.max(0,(sMinY/overlay.height)*OH),
-    oMaxY: Math.min(OH,(sMaxY/overlay.height)*OH),
+    oMinX: Math.max(0, Math.floor((sMinX/overlay.width)*OW)),
+    oMaxX: Math.min(OW-1, Math.ceil((sMaxX/overlay.width)*OW)),
+    oMinY: Math.max(0, Math.floor((sMinY/overlay.height)*OH)),
+    oMaxY: Math.min(OH-1, Math.ceil((sMaxY/overlay.height)*OH)),
   };
 }
 
 // Detect hole (dark) or ball (bright) strictly within a screen-coord box.
-// Uses pixel-counting: find the dominant dark/bright cluster, measure its area → radius.
+// 1. Find seed (darkest/brightest pixel in box)
+// 2. Flood-fill from seed — only pixels connected to seed matching threshold
+// 3. Centroid of flood region = center; area → radius
 // Returns screen coords {x, y, r} or null.
 function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
   const data=captureFrame();
   const {oMinX,oMaxX,oMinY,oMaxY}=screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY);
 
-  // 1. Find the extreme pixel (darkest/brightest) — that's our seed
-  let bestVal=mode==='dark'?999:-1, sx=( oMinX+oMaxX)/2, sy=(oMinY+oMaxY)/2;
-  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++) {
-    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++) {
+  // 1. Find seed — the extreme pixel in the box
+  let bestVal=mode==='dark'?999:-1, seedX=Math.round((oMinX+oMaxX)/2), seedY=Math.round((oMinY+oMaxY)/2);
+  for (let y=oMinY;y<=oMaxY;y++) {
+    for (let x=oMinX;x<=oMaxX;x++) {
       const v=luma(data,x,y);
       if ((mode==='dark'&&v<bestVal)||(mode==='bright'&&v>bestVal)) {
-        bestVal=v; sx=x; sy=y;
+        bestVal=v; seedX=x; seedY=y;
       }
     }
   }
 
-  // 2. Adaptive threshold: halfway between seed and median of box
+  // 2. Threshold: midpoint between seed and the background median
   let vals=[];
-  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++)
-    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++)
-      vals.push(luma(data,x,y));
+  for (let y=oMinY;y<=oMaxY;y++)
+    for (let x=oMinX;x<=oMaxX;x++) vals.push(luma(data,x,y));
   vals.sort((a,b)=>a-b);
   const medianV=vals[Math.floor(vals.length/2)];
-  const thresh = mode==='dark' ? (bestVal+medianV)/2 : (bestVal+medianV)/2;
+  const thresh=(bestVal+medianV)/2;
 
-  // 3. Count pixels that belong to the object (dark/bright side of threshold)
+  // 3. BFS flood fill from seed — only connected pixels on same side of threshold
+  const visited=new Uint8Array(OW*OH);
+  const queue=[[seedX,seedY]];
+  visited[seedY*OW+seedX]=1;
   let sumX=0,sumY=0,count=0;
-  for (let y=Math.ceil(oMinY);y<=Math.floor(oMaxY);y++) {
-    for (let x=Math.ceil(oMinX);x<=Math.floor(oMaxX);x++) {
-      const v=luma(data,x,y);
-      const inObj = mode==='dark' ? v<thresh : v>thresh;
-      if (inObj) { sumX+=x; sumY+=y; count++; }
+  const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  while (queue.length) {
+    const [x,y]=queue.pop();
+    const v=luma(data,x,y);
+    const inObj=mode==='dark'?v<=thresh:v>=thresh;
+    if (!inObj) continue;
+    sumX+=x; sumY+=y; count++;
+    for (const [dx,dy] of dirs) {
+      const nx=x+dx, ny=y+dy;
+      if (nx<oMinX||nx>oMaxX||ny<oMinY||ny>oMaxY) continue;
+      if (visited[ny*OW+nx]) continue;
+      visited[ny*OW+nx]=1;
+      queue.push([nx,ny]);
     }
   }
-  if (count<4) return null;
+  if (count<6) return null;
 
-  // 4. Centroid and area-derived radius
+  // 4. Centroid + area-derived radius
   const cx=sumX/count, cy=sumY/count;
   const rOff=Math.sqrt(count/Math.PI);
   const {sx:scx,sy:scy}=o2s(cx,cy);
