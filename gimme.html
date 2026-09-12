@@ -182,40 +182,53 @@ function screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY) {
 }
 
 // Detect hole (dark) or ball (bright) strictly within a screen-coord box.
-// 1. Find seed (darkest/brightest pixel in box)
-// 2. Flood-fill from seed — only pixels connected to seed matching threshold
-// 3. Centroid of flood region = center; area → radius
+// Uses local histogram stretching so bright outdoor conditions don't fool detection.
+// 1. Normalize luma within box to full 0-255 range
+// 2. Find seed (darkest/brightest normalized pixel)
+// 3. Flood-fill from seed — connected pixels within 25% threshold
+// 4. Centroid + area → center and radius
 // Returns screen coords {x, y, r} or null.
 function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
   const data=captureFrame();
   const {oMinX,oMaxX,oMinY,oMaxY}=screenBoxToOff(sMinX,sMinY,sMaxX,sMaxY);
 
-  // 1. Find seed — the extreme pixel in the box
+  // 0. Local histogram stretch — normalize luma in this box to 0-255
+  //    This makes detection work regardless of ambient brightness (indoor vs bright sun)
+  let minL=255, maxL=0;
+  for (let y=oMinY;y<=oMaxY;y++)
+    for (let x=oMinX;x<=oMaxX;x++) {
+      const v=luma(data,x,y);
+      if (v<minL) minL=v;
+      if (v>maxL) maxL=v;
+    }
+  const range=maxL-minL||1;
+  const lumaLocal=(x,y)=>(luma(data,x,y)-minL)/range*255;
+
+  // 1. Find seed — extreme pixel in box (using normalized luma)
   let bestVal=mode==='dark'?999:-1, seedX=Math.round((oMinX+oMaxX)/2), seedY=Math.round((oMinY+oMaxY)/2);
   for (let y=oMinY;y<=oMaxY;y++) {
     for (let x=oMinX;x<=oMaxX;x++) {
-      const v=luma(data,x,y);
+      const v=lumaLocal(x,y);
       if ((mode==='dark'&&v<bestVal)||(mode==='bright'&&v>bestVal)) {
         bestVal=v; seedX=x; seedY=y;
       }
     }
   }
 
-  // 2. Tight threshold: 25% of the way from seed toward median
-  //    Keeps fill close to the actual object, excludes connected shadows/fringe
+  // 2. Tight threshold: 25% of the way from seed toward median (normalized)
   let vals=[];
   for (let y=oMinY;y<=oMaxY;y++)
-    for (let x=oMinX;x<=oMaxX;x++) vals.push(luma(data,x,y));
+    for (let x=oMinX;x<=oMaxX;x++) vals.push(lumaLocal(x,y));
   vals.sort((a,b)=>a-b);
   const medianV=vals[Math.floor(vals.length/2)];
   const thresh = mode==='dark'
-    ? bestVal + (medianV-bestVal)*0.25   // dark: allow 25% above darkest
-    : bestVal - (bestVal-medianV)*0.25;  // bright: allow 25% below brightest
+    ? bestVal + (medianV-bestVal)*0.25
+    : bestVal - (bestVal-medianV)*0.25;
 
-  // Max radius for flood fill — hole can't be more than 30% of the half-box width
+  // Max radius cap
   const maxFillR = (oMaxX-oMinX)*0.60;
 
-  // 3. BFS flood fill from seed — connected pixels within threshold AND within maxFillR
+  // 3. BFS flood fill from seed
   const visited=new Uint8Array(OW*OH);
   const queue=[[seedX,seedY]];
   visited[seedY*OW+seedX]=1;
@@ -223,7 +236,7 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
   const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
   while (queue.length) {
     const [x,y]=queue.pop();
-    const v=luma(data,x,y);
+    const v=lumaLocal(x,y);
     const inObj=mode==='dark'?v<=thresh:v>=thresh;
     if (!inObj) continue;
     if (Math.hypot(x-seedX,y-seedY)>maxFillR) continue;
