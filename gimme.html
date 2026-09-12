@@ -114,6 +114,7 @@ let drawing = null; // { startX, startY, curX, curY }
 
 // Detected rings (animated): { x,y,r,targetX,targetY,targetR,snapped,color,label }
 let rings;
+let holeBlobSpan = 0; // max dimension of detected hole blob in screen px — tilt-compensated ruler
 
 function syncCanvas() {
   const rect = overlay.parentElement.getBoundingClientRect();
@@ -225,8 +226,8 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
     ? bestVal + (medianV-bestVal)*0.25
     : bestVal - (bestVal-medianV)*0.25;
 
-  // Max radius cap
-  const maxFillR = (oMaxX-oMinX)*0.60;
+  // Max radius cap — use smaller of box width or height so tall/narrow boxes work too
+  const maxFillR = Math.min(oMaxX-oMinX, oMaxY-oMinY)*0.75;
 
   // 3. BFS flood fill from seed
   const visited=new Uint8Array(OW*OH);
@@ -264,7 +265,9 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
   const cx=sumX/count, cy=sumY/count;
   const rOff=Math.sqrt(count/Math.PI);
   const {sx:scx,sy:scy}=o2s(cx,cy);
-  return {x:scx, y:scy, r:(rOff/OW)*overlay.width};
+  // blobSpan = max dimension of hole in screen pixels — used by caller for tilt-compensated scaling
+  const blobSpan = (Math.max(blobW,blobH)/OW)*overlay.width;
+  return {x:scx, y:scy, r:(rOff/OW)*overlay.width, blobSpan};
 }
 
 // ── Animation loop ────────────────────────────────────────────────────────
@@ -296,7 +299,8 @@ function startAnim() {
 function showResult() {
   const hx=rings[0].targetX, hy=rings[0].targetY, hr=rings[0].targetR;
   const bx=rings[1].targetX, by=rings[1].targetY, br=rings[1].targetR;
-  const pxPerIn=(hr*2)/HOLE_DIA_IN;
+  // Use max dimension of hole blob as ruler — compensates for phone tilt/perspective
+  const pxPerIn=holeBlobSpan/HOLE_DIA_IN;
   const inches=Math.hypot(bx-hx,by-hy)/pxPerIn;
   distEl.textContent=inches.toFixed(1)+' in';
   const isGimme=inches<=gimmeIn;
@@ -451,6 +455,7 @@ function finishDraw() {
   const holeFound = detectHalf(box,'left','dark');
   const hx=holeFound?holeFound.x:(left+(right-left)*0.25), hy=holeFound?holeFound.y:(top+bot)/2;
   const hr=holeFound?holeFound.r:(right-left)*0.12;
+  holeBlobSpan = holeFound ? holeFound.blobSpan : hr*2;
 
   // Ball radius derived from hole (most accurate) — center from bright cluster in right half
   const ballR=hr*(BALL_DIA_IN/HOLE_DIA_IN);
@@ -475,7 +480,7 @@ document.querySelectorAll('.gimme-btn').forEach(b=>{
 });
 
 function reset() {
-  state='draw'; sceneBox=null; drawing=null;
+  state='draw'; sceneBox=null; drawing=null; holeBlobSpan=0;
   if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
   initRings();
   distEl.textContent='—'; verdEl.textContent=''; verdEl.className='';
