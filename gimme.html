@@ -451,8 +451,8 @@ function finishDraw() {
   const {x1,y1,x2,y2}=box;
   const left=Math.min(x1,x2), right=Math.max(x1,x2), top=Math.min(y1,y2), bot=Math.max(y1,y2);
 
-  // Hole = left half, detect dark cluster
-  const holeFound = detectHalf(box,'left','dark');
+  // Hole = left half, detect bright cluster (white cup visible from above)
+  const holeFound = detectHalf(box,'left','bright');
   const hx=holeFound?holeFound.x:(left+(right-left)*0.25), hy=holeFound?holeFound.y:(top+bot)/2;
   const hr=holeFound?holeFound.r:(right-left)*0.12;
   holeBlobSpan = holeFound ? holeFound.blobSpan : hr*2;
