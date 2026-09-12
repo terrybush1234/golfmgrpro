@@ -233,6 +233,7 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
   const queue=[[seedX,seedY]];
   visited[seedY*OW+seedX]=1;
   let sumX=0,sumY=0,count=0;
+  let bMinX=seedX,bMaxX=seedX,bMinY=seedY,bMaxY=seedY;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
   while (queue.length) {
     const [x,y]=queue.pop();
@@ -241,6 +242,8 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
     if (!inObj) continue;
     if (Math.hypot(x-seedX,y-seedY)>maxFillR) continue;
     sumX+=x; sumY+=y; count++;
+    if (x<bMinX) bMinX=x; if (x>bMaxX) bMaxX=x;
+    if (y<bMinY) bMinY=y; if (y>bMaxY) bMaxY=y;
     for (const [dx,dy] of dirs) {
       const nx=x+dx, ny=y+dy;
       if (nx<oMinX||nx>oMaxX||ny<oMinY||ny>oMaxY) continue;
@@ -250,6 +253,12 @@ function findObjectInBounds(sMinX,sMinY,sMaxX,sMaxY, mode) {
     }
   }
   if (count<6) return null;
+
+  // Reject blobs that are too elongated (shadow) or too large (fills most of box)
+  const blobW=bMaxX-bMinX+1, blobH=bMaxY-bMinY+1;
+  const aspect=Math.max(blobW,blobH)/Math.max(Math.min(blobW,blobH),1);
+  const boxArea=(oMaxX-oMinX)*(oMaxY-oMinY)||1;
+  if (aspect>2.5 || count/boxArea>0.45) return null;
 
   // 4. Centroid + area-derived radius
   const cx=sumX/count, cy=sumY/count;
